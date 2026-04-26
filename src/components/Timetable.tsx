@@ -48,17 +48,17 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
 
   return (
     <div className="overflow-x-auto -mx-1 pb-4 lg:mx-0 lg:pb-0">
-      <div className="bg-white rounded-[1rem] lg:rounded-[1.5rem] shadow-xl overflow-hidden border border-[#F3E5F5] min-w-[480px] lg:min-w-0 print:shadow-none print:border print:rounded-none lg:print:min-w-0">
+      <div className="bg-white rounded-[1rem] lg:rounded-[1.5rem] shadow-xl overflow-hidden border border-[#F3E5F5] min-w-[300px] lg:min-w-0 print:shadow-none print:border print:rounded-none lg:print:min-w-0">
         <table className="w-full border-collapse table-fixed">
         <thead>
           <tr className="bg-[#FBF9FE]/50 print:bg-transparent">
-            <th className="w-9 lg:w-14 p-1 lg:p-3 border-b border-r border-[#F3E5F5] text-[7px] lg:text-[9px] font-black text-[#9575CD] uppercase tracking-widest text-center">
+            <th className="w-7 lg:w-14 p-0.5 lg:p-3 border-b border-r border-[#F3E5F5] text-[7px] lg:text-[9px] font-black text-[#9575CD] uppercase tracking-widest text-center">
               교시
             </th>
             {weekRange.map((day, idx) => (
-              <th key={idx} className="p-1 lg:p-3 border-b border-r last:border-r-0 border-[#F3E5F5] text-center print:p-1">
-                <span className="block text-xs lg:text-lg font-black text-[#5E35B1] uppercase tracking-tight">{DAYS[idx]}</span>
-                <span className="block text-[10px] lg:text-base font-bold text-[#9575CD] lg:mt-0.5 tracking-tighter">{day.date.split('-').slice(1).join('/')}</span>
+              <th key={idx} className="p-0.5 lg:p-3 border-b border-r last:border-r-0 border-[#F3E5F5] text-center print:p-1">
+                <span className="block text-[10px] lg:text-lg font-black text-[#5E35B1] uppercase tracking-tight">{DAYS[idx]}</span>
+                <span className="block text-[8px] lg:text-base font-bold text-[#9575CD] lg:mt-0.5 tracking-tighter">{day.date.split('-').slice(1).join('/')}</span>
               </th>
             ))}
           </tr>
@@ -68,10 +68,10 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
             if (p === 'lunch') {
               return (
                 <tr key="lunch" className="bg-[#FCFBFF] print:bg-transparent">
-                  <td className="p-2 border-b border-r border-[#F3E5F5] text-center">
-                    <span className="text-[11px] lg:text-[13px] font-black text-[#9575CD] uppercase tracking-widest">점심시간</span>
+                  <td className="p-1 border-b border-r border-[#F3E5F5] text-center">
+                    <span className="text-[9px] lg:text-[13px] font-black text-[#9575CD] uppercase tracking-widest leading-none">점심</span>
                   </td>
-                  <td colSpan={5} className="p-1 border-b border-[#F3E5F5] text-center italic text-[#BA68C8] text-[11px] font-bold tracking-widest leading-none uppercase">
+                  <td colSpan={5} className="p-0.5 border-b border-[#F3E5F5] text-center italic text-[#BA68C8] text-[9px] lg:text-[11px] font-bold tracking-widest leading-none uppercase">
                     {PERIOD_TIMES.l} (12:40 - 13:40)
                   </td>
                 </tr>
@@ -83,7 +83,7 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
             return (
               <tr key={period}>
                 <td className="p-1 lg:p-3 border-b border-r border-[#F3E5F5] text-center print:p-1">
-                  <span className="block text-base lg:text-xl font-black text-[#9575CD] leading-none mb-0.5 lg:mb-1 tracking-tighter">{period}</span>
+                  <span className="block text-sm lg:text-xl font-black text-[#9575CD] leading-none mb-0.5 lg:mb-1 tracking-tighter">{period}</span>
                   <span className="block text-[8px] lg:text-[11px] font-bold text-[#BA68C8] scale-90 lg:scale-100">{PERIOD_TIMES[period as keyof typeof PERIOD_TIMES]}</span>
                 </td>
                 {weekRange.map((day, dIdx) => {
