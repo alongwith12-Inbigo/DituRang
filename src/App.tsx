@@ -64,6 +64,7 @@ export default function App() {
   const [isWorkReportOpen, setIsWorkReportOpen] = React.useState(false);
   const [confirmerName, setConfirmerName] = React.useState('홍길동');
   const [selectedSlot, setSelectedSlot] = React.useState<{ date: string; period: number } | null>(null);
+  const [editingReservation, setEditingReservation] = React.useState<Reservation | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -344,6 +345,10 @@ export default function App() {
                   setSelectedSlot({ date, period });
                   setIsBookingOpen(true);
                 }}
+                onReservationClick={(reservation) => {
+                  setEditingReservation(reservation);
+                  setIsBookingOpen(true);
+                }}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[#F3E5F5] rounded-[1.5rem] bg-white/40 h-64 lg:h-auto">
@@ -359,12 +364,21 @@ export default function App() {
 
       {/* Modals */}
       <AnimatePresence>
-        {isBookingOpen && selectedSlot && selectedTutor && (
+        {isBookingOpen && selectedTutor && (
           <ReservationModal
             tutor={selectedTutor}
-            slot={selectedSlot}
-            onClose={() => setIsBookingOpen(false)}
-            onSuccess={() => setIsBookingOpen(false)}
+            slot={selectedSlot || { date: editingReservation?.date || '', period: editingReservation?.period || 0 }}
+            editReservation={editingReservation || undefined}
+            onClose={() => {
+              setIsBookingOpen(false);
+              setSelectedSlot(null);
+              setEditingReservation(null);
+            }}
+            onSuccess={() => {
+              setIsBookingOpen(false);
+              setSelectedSlot(null);
+              setEditingReservation(null);
+            }}
             reservations={reservations}
           />
         )}

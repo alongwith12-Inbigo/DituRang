@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, Check, Star, AlertCircle, Calendar } from 'lucide-react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { addWeeks, format, addDays } from 'date-fns';
 import { db } from '../lib/firebase';
 import { Tutor, Reservation, PERIOD_TIMES, DAYS } from '../types';
@@ -13,16 +13,17 @@ interface ReservationModalProps {
   onClose: () => void;
   onSuccess: () => void;
   reservations: Reservation[];
+  editReservation?: Reservation;
 }
 
-export default function ReservationModal({ tutor, slot, onClose, onSuccess, reservations }: ReservationModalProps) {
-  const [teacherName, setTeacherName] = React.useState('');
-  const [category, setCategory] = React.useState('수업 직접 보조');
-  const [classInfo, setClassInfo] = React.useState('');
-  const [subjectInfo, setSubjectInfo] = React.useState('');
-  const [locationInfo, setLocationInfo] = React.useState('');
-  const [otherDetail, setOtherDetail] = React.useState('');
-  const [selectedPeriods, setSelectedPeriods] = React.useState<number[]>([slot.period]);
+export default function ReservationModal({ tutor, slot, onClose, onSuccess, reservations, editReservation }: ReservationModalProps) {
+  const [teacherName, setTeacherName] = React.useState(editReservation?.teacherName || '');
+  const [category, setCategory] = React.useState(editReservation?.category || '수업 직접 보조');
+  const [classInfo, setClassInfo] = React.useState(editReservation?.classInfo || '');
+  const [subjectInfo, setSubjectInfo] = React.useState(editReservation?.subjectInfo || '');
+  const [locationInfo, setLocationInfo] = React.useState(editReservation?.locationInfo || '');
+  const [otherDetail, setOtherDetail] = React.useState(editReservation?.otherDetail || '');
+  const [selectedPeriods, setSelectedPeriods] = React.useState<number[]>(editReservation ? [editReservation.period] : [slot.period]);
   const [isRecurring, setIsRecurring] = React.useState(false);
   const [weeksToRepeat, setWeeksToRepeat] = React.useState(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -60,6 +61,24 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
 
     setIsSubmitting(true);
     try {
+      if (editReservation) {
+        // Update single reservation
+        await setDoc(doc(db, 'reservations', editReservation.id), {
+          ...editReservation,
+          teacherName,
+          reason: finalReason,
+          category,
+          classInfo: category === '수업 직접 보조' ? classInfo : null,
+          subjectInfo: category === '수업 직접 보조' ? subjectInfo : null,
+          locationInfo: category === '수업 직접 보조' ? locationInfo : null,
+          otherDetail: (category === '수업 직접 보조' || category === '각종 디지털 관련 업무 지원') ? otherDetail : null,
+          updatedAt: serverTimestamp()
+        });
+        alert("예약이 수정되었습니다.");
+        onSuccess();
+        return;
+      }
+
       const numWeeks = isRecurring ? weeksToRepeat + 1 : 1;
       const proposedSlots: { date: string; period: number }[] = [];
       const conflicts: string[] = [];
@@ -152,9 +171,11 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
       >
         <header className="px-8 py-6 bg-[#FBF9FE]/50 border-b border-[#F3E5F5] flex items-center justify-between shrink-0">
           <div className="flex flex-col">
-            <h2 className="text-xl font-black text-[#5E35B1] tracking-tight">지원 요청하기 (DiTu-Rang)</h2>
+            <h2 className="text-xl font-black text-[#5E35B1] tracking-tight">
+              {editReservation ? '예약 수정하기' : '지원 요청하기'} (DiTu-Rang)
+            </h2>
             <p className="text-[10px] font-bold text-[#D1C4E9] tracking-widest uppercase mt-0.5">
-              {tutor.name} 선생님 / {slot.date}
+              {tutor.name} 선생님 / {slot.date} {editReservation ? `(${editReservation.period}교시)` : ''}
             </p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white rounded-full transition-colors text-[#D1C4E9]">
@@ -241,76 +262,82 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
-            <label className="text-[12px] font-black text-[#7B1FA2] uppercase tracking-wider ml-1">교시 선택 (연속 가능)</label>
-            <div className="flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5, 6, 7].map(p => {
-                const active = isSlotActive(slot.date, p);
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    disabled={!active}
-                    onClick={() => togglePeriod(p)}
-                    className={cn(
-                      "w-10 h-10 rounded-xl text-xs font-black border transition-all flex items-center justify-center",
-                      selectedPeriods.includes(p) 
-                        ? "bg-purple-500 border-purple-600 text-white shadow-lg shadow-purple-50" 
-                        : active 
-                          ? "bg-white border-[#F3E5F5] text-[#5E35B1] hover:bg-[#FBF9FE]/50 hover:border-[#D1C4E9]" 
-                          : "bg-[#F5F5F5] border-transparent text-[#E1E1E1] cursor-not-allowed"
-                    )}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
+          {!editReservation && (
+            <div className="flex flex-col gap-2">
+              <label className="text-[12px] font-black text-[#7B1FA2] uppercase tracking-wider ml-1">교시 선택 (연속 가능)</label>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5, 6, 7].map(p => {
+                  const active = isSlotActive(slot.date, p);
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      disabled={!active}
+                      onClick={() => togglePeriod(p)}
+                      className={cn(
+                        "w-10 h-10 rounded-xl text-xs font-black border transition-all flex items-center justify-center",
+                        selectedPeriods.includes(p) 
+                          ? "bg-purple-500 border-purple-600 text-white shadow-lg shadow-purple-50" 
+                          : active 
+                            ? "bg-white border-[#F3E5F5] text-[#5E35B1] hover:bg-[#FBF9FE]/50 hover:border-[#D1C4E9]" 
+                            : "bg-[#F5F5F5] border-transparent text-[#E1E1E1] cursor-not-allowed"
+                      )}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex flex-col gap-3 p-4 bg-blue-50/20 rounded-2xl border border-blue-100/30">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-sm font-black text-blue-700">매주 반복 예약</span>
-                <span className="text-[10px] font-medium text-blue-400">선택한 시간대를 다음 주에도 연속으로 예약합니다.</span>
-              </div>
-              <button 
-                type="button"
-                onClick={() => setIsRecurring(!isRecurring)}
-                className={cn(
-                  "w-12 h-6 rounded-full transition-all relative",
-                  isRecurring ? "bg-blue-600" : "bg-slate-200"
-                )}
-              >
-                <div className={cn(
-                  "absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
-                  isRecurring ? "left-7" : "left-1"
-                )} />
-              </button>
-            </div>
-            
-            {isRecurring && (
-              <div className="flex items-center gap-3 pt-2 border-t border-blue-100/30 animate-in fade-in slide-in-from-top-1">
-                <span className="text-xs font-bold text-blue-600">반복 기간:</span>
-                <select 
-                  value={weeksToRepeat}
-                  onChange={e => setWeeksToRepeat(Number(e.target.value))}
-                  className="bg-white border border-blue-100 rounded-lg px-2 py-1 text-xs font-bold text-blue-700 outline-none"
+          {!editReservation && (
+            <div className="flex flex-col gap-3 p-4 bg-blue-50/20 rounded-2xl border border-blue-100/30">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-sm font-black text-blue-700">매주 반복 예약</span>
+                  <span className="text-[10px] font-medium text-blue-400">선택한 시간대를 다음 주에도 연속으로 예약합니다.</span>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setIsRecurring(!isRecurring)}
+                  className={cn(
+                    "w-12 h-6 rounded-full transition-all relative",
+                    isRecurring ? "bg-blue-600" : "bg-slate-200"
+                  )}
                 >
-                  <option value={1}>현재 주 포함 2주</option>
-                  <option value={2}>현재 주 포함 3주</option>
-                  <option value={3}>현재 주 포함 4주</option>
-                </select>
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                    isRecurring ? "left-7" : "left-1"
+                  )} />
+                </button>
               </div>
-            )}
-          </div>
+              
+              {isRecurring && (
+                <div className="flex items-center gap-3 pt-2 border-t border-blue-100/30 animate-in fade-in slide-in-from-top-1">
+                  <span className="text-xs font-bold text-blue-600">반복 기간:</span>
+                  <select 
+                    value={weeksToRepeat}
+                    onChange={e => setWeeksToRepeat(Number(e.target.value))}
+                    className="bg-white border border-blue-100 rounded-lg px-2 py-1 text-xs font-bold text-blue-700 outline-none"
+                  >
+                    <option value={1}>현재 주 포함 2주</option>
+                    <option value={2}>현재 주 포함 3주</option>
+                    <option value={3}>현재 주 포함 4주</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           <button 
             type="submit"
             disabled={isSubmitting}
             className="w-full py-4 bg-[#673AB7] hover:bg-[#5E35B1] disabled:bg-[#E1E1E1] text-white rounded-2xl font-black shadow-xl shadow-purple-100 transition-all flex items-center justify-center gap-2 mt-2"
           >
-            {isSubmitting ? "처리 중..." : <>신청 완료하기 <Check size={20} /></>}
+            {isSubmitting ? "처리 중..." : (
+              editReservation ? <>수정 완료하기 <Check size={20} /></> : <>신청 완료하기 <Check size={20} /></>
+            )}
           </button>
         </form>
       </motion.div>

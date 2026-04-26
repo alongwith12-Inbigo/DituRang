@@ -17,9 +17,10 @@ interface TimetableProps {
   reservations: Reservation[];
   weekRange: { date: string; label: string }[];
   onSlotClick: (date: string, period: number) => void;
+  onReservationClick: (reservation: Reservation) => void;
 }
 
-export default function Timetable({ tutor, reservations, weekRange, onSlotClick }: TimetableProps) {
+export default function Timetable({ tutor, reservations, weekRange, onSlotClick, onReservationClick }: TimetableProps) {
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
   if (!tutor) return null;
@@ -95,7 +96,9 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
                     <td 
                       key={dIdx} 
                       onClick={(e) => {
-                        if (active && !reservation) {
+                        if (reservation) {
+                          onReservationClick(reservation);
+                        } else if (active) {
                           onSlotClick(day.date, period);
                         }
                       }}
