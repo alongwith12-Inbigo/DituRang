@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, Check, Star, AlertCircle, Calendar } from 'lucide-react';
-import { addDoc, collection, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, doc, setDoc, query, where, getDocs } from 'firebase/firestore';
 import { addWeeks, format, addDays } from 'date-fns';
 import { db } from '../lib/firebase';
 import { Tutor, Reservation, PERIOD_TIMES, DAYS } from '../types';
@@ -81,37 +81,43 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
 
       const numWeeks = isRecurring ? weeksToRepeat + 1 : 1;
       const proposedSlots: { date: string; period: number }[] = [];
-      const conflicts: string[] = [];
 
-      // 1. Identify all target slots and check for conflicts
+      // 1. Identify all target slots
       for (let w = 0; w < numWeeks; w++) {
         const currentDate = format(addWeeks(new Date(slot.date), w), 'yyyy-MM-dd');
-        
         for (const p of selectedPeriods) {
-          // Check if tutor is working on this day/period
-          if (!isSlotActive(currentDate, p)) {
-            continue;
-          }
-
-          // Check for existing reservation conflict
-          const existing = reservations.find(r => r.date === currentDate && r.period === p && r.tutorId === tutor.id);
-          if (existing) {
-            conflicts.push(`${currentDate} (${p}교시): ${existing.teacherName} 선생님 예약됨`);
-          } else {
-            proposedSlots.push({ date: currentDate, period: p });
-          }
+          if (!isSlotActive(currentDate, p)) continue;
+          proposedSlots.push({ date: currentDate, period: p });
         }
       }
 
-      // 2. Alert and block if conflicts exist
-      if (conflicts.length > 0) {
-        alert(`중복된 예약이 발견되었습니다:\n\n${conflicts.join('\n')}\n\n다른 시간을 선택하시거나 중복된 날짜를 제외해 주세요.`);
+      if (proposedSlots.length === 0) {
+        alert("선택하신 시간대에 예약 가능한 시간대가 없습니다.");
         setIsSubmitting(false);
         return;
       }
 
-      if (proposedSlots.length === 0) {
-        alert("선택하신 시간대에 예약 가능한 시간대가 없습니다. (근무 시간이 아니거나 이미 예약됨)");
+      // 2. SERVER-SIDE CONFLICT CHECK
+      const conflictChecks = proposedSlots.map(async (s) => {
+        const q = query(
+          collection(db, 'reservations'),
+          where('tutorId', '==', tutor.id),
+          where('date', '==', s.date),
+          where('period', '==', s.period)
+        );
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const docData = snapshot.docs[0].data();
+          return `${s.date} (${s.period}교시): ${docData.teacherName} 선생님 이미 예약됨`;
+        }
+        return null;
+      });
+
+      const results = await Promise.all(conflictChecks);
+      const serverConflicts = results.filter((r): r is string => r !== null);
+
+      if (serverConflicts.length > 0) {
+        alert(`중복된 예약이 확인되었습니다:\n\n${serverConflicts.join('\n')}\n\n다른 시간을 선택해 주십시오.`);
         setIsSubmitting(false);
         return;
       }
