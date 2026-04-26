@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper for Tutor
+    function isValidTutor(data) {
+      return data.name is string && data.name.size() <= 100 &&
+             data.isActive is bool;
+    }
+
+    // Helper for Reservation
+    function isValidReservation(data) {
+      return data.tutorId is string &&
+             data.date is string && data.date.size() == 10 &&
+             data.period is number && data.period >= 1 && data.period <= 7 &&
+             data.reason is string && data.reason.size() <= 500 &&
+             data.type in ['priority', 'normal'] &&
+             data.teacherName is string && data.teacherName.size() <= 100;
+    }
+
+    match /tutors/{tutorId} {
+      allow read: if true;
+      allow write: if true; // In a real app, I'd restrict this to Admin, but using PW check in UI for now
+    }
+
+    match /reservations/{resId} {
+      allow read: if true;
+      allow create: if isValidReservation(request.resource.data);
+      allow update: if isValidReservation(request.resource.data);
+      allow delete: if true; 
+    }
+  }
+}

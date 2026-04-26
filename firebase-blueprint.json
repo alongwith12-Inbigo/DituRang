@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "tutor": {
+      "title": "Tutor",
+      "description": "Information about a digital tutor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "workSchedule": {
+          "type": "object",
+          "description": "Map of dayIndex (0-4 for Mon-Fri) to array of active periods (1-7)"
+        }
+      },
+      "required": ["id", "name", "isActive"]
+    },
+    "reservation": {
+      "title": "Reservation",
+      "description": "A tutor reservation record",
+      "type": "object",
+      "properties": {
+        "tutorId": { "type": "string" },
+        "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
+        "period": { "type": "number", "description": "1-7" },
+        "reason": { "type": "string" },
+        "type": { "type": "string", "enum": ["priority", "normal"] },
+        "teacherName": { "type": "string" },
+        "recurrenceId": { "type": "string", "description": "Optional ID to group recurring reservations" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tutorId", "date", "period", "reason", "type", "teacherName"]
+    }
+  },
+  "firestore": {
+    "tutors": {
+      "schema": "tutor",
+      "description": "Collection of tutors and their base schedules"
+    },
+    "reservations": {
+      "schema": "reservation",
+      "description": "Collection of all reservations"
+    }
+  }
+}
