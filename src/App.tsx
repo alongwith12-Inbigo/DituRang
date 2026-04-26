@@ -65,6 +65,7 @@ export default function App() {
   const [confirmerName, setConfirmerName] = React.useState('홍길동');
   const [selectedSlot, setSelectedSlot] = React.useState<{ date: string; period: number } | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const printRef = React.useRef<HTMLDivElement>(null);
@@ -145,15 +146,47 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-[#FDFDFF] font-sans overflow-hidden text-[#4A148C]">
+    <div className="flex flex-col lg:flex-row h-screen bg-[#FDFDFF] font-sans overflow-hidden text-[#4A148C]">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-white/80 backdrop-blur-md border-b border-[#F3E5F5] p-4 flex items-center justify-between sticky top-0 z-40 print:hidden">
+        <div className="flex flex-col">
+          <h1 className="text-xl font-black text-[#673AB7] tracking-tighter leading-none">디튜랑</h1>
+          <span className="text-[10px] font-bold text-[#A294CC] tracking-tight uppercase leading-none mt-1">예약 시스템</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handlePrint}
+            className="p-2 text-[#6A1B9A] hover:bg-purple-50 rounded-xl transition-colors"
+            title="인쇄"
+          >
+            <Printer size={20} />
+          </button>
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 text-[#673AB7] hover:bg-purple-50 rounded-xl transition-colors"
+          >
+            <Users size={24} />
+          </button>
+        </div>
+      </div>
+
       {/* Sidebar */}
-      <aside className="w-80 bg-[#F9F8FD]/80 backdrop-blur-xl border-r border-[#F3E5F5] p-8 flex flex-col gap-10 print:hidden">
-          <div className="flex flex-col gap-0.5">
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 w-72 bg-[#F9F8FD] border-r border-[#F3E5F5] p-6 flex flex-col gap-8 transition-transform duration-300 transform lg:relative lg:translate-x-0 print:hidden",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+          <div className="flex flex-col gap-0.5 relative">
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden absolute -right-2 top-0 p-1 text-[#BA68C8]"
+            >
+              <X size={20} />
+            </button>
             <div className="flex items-baseline gap-1.5">
-              <h1 className="text-3xl font-black text-[#673AB7] tracking-tighter">디튜랑</h1>
-              <span className="text-sm font-bold text-[#A294CC] tracking-tight">(DiTu-Rang)</span>
+              <h1 className="text-2xl lg:text-3xl font-black text-[#673AB7] tracking-tighter">디튜랑</h1>
+              <span className="text-[10px] lg:text-sm font-bold text-[#A294CC] tracking-tight whitespace-nowrap">(DiTu-Rang)</span>
             </div>
-            <p className="text-sm text-[#5E35B1] font-bold tracking-tight uppercase">디지털 튜터 예약 시스템</p>
+            <p className="text-[10px] lg:text-sm text-[#5E35B1] font-bold tracking-tight uppercase">디지털 튜터 예약 시스템</p>
           </div>
 
         <div className="flex flex-col gap-6 flex-1 overflow-y-auto pr-2">
@@ -245,41 +278,49 @@ export default function App() {
         </footer>
       </aside>
 
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-purple-900/10 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Main Content */}
       <main className={cn(
-        "flex-1 overflow-y-auto p-8 lg:p-12 print:p-0 print:overflow-visible",
+        "flex-1 overflow-y-auto p-4 lg:p-12 print:p-0 print:overflow-visible",
         isWorkReportOpen && "print:hidden"
       )}>
-        <div ref={printRef} className="max-w-6xl mx-auto flex flex-col gap-8 print:max-w-none print:p-0">
-          <header className="flex items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-8 rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md">
+        <div ref={printRef} className="max-w-6xl mx-auto flex flex-col gap-6 lg:gap-8 print:max-w-none print:p-0">
+          <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-4">
             <div className="flex flex-col gap-0.5 print:items-center print:w-full">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">
+                <h2 className="text-lg lg:text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">
                   {selectedTutor?.name || (isLoading ? '로딩 중...' : '선택된 튜터 없음')} 
                   <span className="text-[#9575CD] font-bold ml-2 print:text-black print:ml-4">주간 시간표</span>
                 </h2>
               </div>
-              <p className="text-sm font-bold text-[#9575CD] flex items-center gap-2 mt-0.5 print:text-black print:text-sm">
+              <p className="text-xs lg:text-sm font-bold text-[#9575CD] flex items-center gap-1.5 mt-0.5 print:text-black print:text-sm">
                 <Calendar size={14} className="text-[#9575CD] print:hidden" />
                 {format(currentWeekStart, 'yyyy년 MM월 dd일 (EEE)', { locale: ko })} — {format(addDays(currentWeekStart, 4), 'MM월 dd일 (EEE)', { locale: ko })}
               </p>
             </div>
             
-            <div className="flex bg-white/60 p-4 rounded-2xl border border-[#F3E5F5]/50 shadow-sm items-center gap-4 print:hidden">
+            <div className="flex bg-white/80 p-3 lg:p-4 rounded-xl lg:rounded-2xl border border-[#F3E5F5]/50 shadow-sm items-center gap-4 print:hidden self-start md:self-auto">
               <div className="text-right">
-                <p className="text-lg font-black text-[#673AB7]">
+                <p className="text-base lg:text-lg font-black text-[#673AB7]">
                   {format(new Date(), 'yyyy. MM. dd.(EEE)', { locale: ko })}
                 </p>
-                <p className="text-[11px] font-bold text-[#A294CC] uppercase tracking-[0.25em] leading-none">오늘</p>
+                <p className="text-[10px] lg:text-[11px] font-bold text-[#A294CC] uppercase tracking-[0.25em] leading-none">오늘</p>
               </div>
             </div>
           </header>
 
           {/* Legend */}
-          <div className="flex gap-4 print:hidden">
+          <div className="flex flex-wrap gap-3 lg:gap-4 print:hidden">
             <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
               <div className={cn("w-4 h-4 rounded-md border", selectedTutor?.id === 'tutor1' ? "bg-[#FFE0E6] border-[#FFD1DA]" : "bg-[#E3F2FF] border-[#D4E9FF]")} />
-              근무 가능
+              근무 시간
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
               <div className={cn("w-4 h-4 rounded-md", selectedTutor?.id === 'tutor1' ? "bg-[#FFC1D1]" : "bg-[#B3E5FC]")} />
@@ -293,24 +334,26 @@ export default function App() {
             </div>
           </div>
 
-          {selectedTutor ? (
-            <Timetable 
-              tutor={selectedTutor} 
-              reservations={reservations} 
-              weekRange={weekRange}
-              onSlotClick={(date, period) => {
-                setSelectedSlot({ date, period });
-                setIsBookingOpen(true);
-              }}
-            />
-          ) : (
-            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[#F3E5F5] rounded-[2rem] bg-white/40">
-              <div className="text-center">
-                <Users className="w-12 h-12 text-[#D1C4E9] mx-auto mb-4 opacity-50" />
-                <p className="text-[#B39DDB] font-bold">왼쪽에서 튜터를 선택해 주세요.</p>
+          <div className="flex-1 overflow-x-auto -mx-4 px-4 pb-4 lg:mx-0 lg:px-0 lg:pb-0">
+            {selectedTutor ? (
+              <Timetable 
+                tutor={selectedTutor} 
+                reservations={reservations} 
+                weekRange={weekRange}
+                onSlotClick={(date, period) => {
+                  setSelectedSlot({ date, period });
+                  setIsBookingOpen(true);
+                }}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[#F3E5F5] rounded-[2rem] bg-white/40 h-64 lg:h-auto">
+                <div className="text-center">
+                  <Users className="w-12 h-12 text-[#D1C4E9] mx-auto mb-4 opacity-50" />
+                  <p className="text-[#B39DDB] font-bold">왼쪽에서 튜터를 선택해 주세요.</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </main>
 

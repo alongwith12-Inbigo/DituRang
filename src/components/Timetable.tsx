@@ -47,8 +47,9 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
   const periods = [1, 2, 3, 4, 'lunch', 5, 6, 7];
 
   return (
-    <div className="bg-white rounded-[1.5rem] shadow-xl overflow-hidden border border-[#F3E5F5] print:shadow-none print:border print:rounded-none">
-      <table className="w-full border-collapse table-fixed">
+    <div className="overflow-x-auto -mx-1 pb-4 lg:mx-0 lg:pb-0">
+      <div className="bg-white rounded-[1.5rem] shadow-xl overflow-hidden border border-[#F3E5F5] min-w-[600px] lg:min-w-0 print:shadow-none print:border print:rounded-none lg:print:min-w-0">
+        <table className="w-full border-collapse table-fixed">
         <thead>
           <tr className="bg-[#FBF9FE]/50 print:bg-transparent">
             <th className="w-14 p-3 border-b border-r border-[#F3E5F5] text-[9px] font-black text-[#9575CD] uppercase tracking-widest text-center">
@@ -119,10 +120,10 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
                             />
                           )}
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[12px] font-black text-black leading-tight">
+                            <span className="text-[12px] lg:text-[13px] font-black text-black leading-tight">
                               {reservation.teacherName}
                             </span>
-                            <span className="text-[11px] font-extrabold text-[#000000] leading-[1.2] line-clamp-2">
+                            <span className="text-[11px] lg:text-[12px] font-extrabold text-[#000000] leading-[1.2] line-clamp-2">
                               {reservation.reason}
                             </span>
                           </div>
@@ -189,6 +190,7 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
           </motion.div>
         </div>
       )}
+      </div>
     </div>
   );
 }
