@@ -60,46 +60,63 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
 
     setIsSubmitting(true);
     try {
-      const batches = [];
-      const recurrenceId = isRecurring ? Math.random().toString(36).substr(2, 9) : null;
       const numWeeks = isRecurring ? weeksToRepeat + 1 : 1;
+      const proposedSlots: { date: string; period: number }[] = [];
+      const conflicts: string[] = [];
 
+      // 1. Identify all target slots and check for conflicts
       for (let w = 0; w < numWeeks; w++) {
         const currentDate = format(addWeeks(new Date(slot.date), w), 'yyyy-MM-dd');
         
         for (const p of selectedPeriods) {
-          // Check for collision
-          const collision = reservations.some(r => r.date === currentDate && r.period === p && r.tutorId === tutor.id);
-          if (collision) continue;
-
-          // CRITICAL: Check if tutor is working on this day/period
+          // Check if tutor is working on this day/period
           if (!isSlotActive(currentDate, p)) {
-            console.warn(`Skipping inactive slot: ${currentDate} P${p}`);
             continue;
           }
 
-          batches.push(addDoc(collection(db, 'reservations'), {
-            tutorId: tutor.id,
-            date: currentDate,
-            period: p,
-            teacherName,
-            reason: finalReason,
-            category,
-            classInfo: category === '수업 직접 보조' ? classInfo : null,
-            subjectInfo: category === '수업 직접 보조' ? subjectInfo : null,
-            locationInfo: category === '수업 직접 보조' ? locationInfo : null,
-            otherDetail: (category === '수업 직접 보조' || category === '각종 디지털 관련 업무 지원') ? otherDetail : null,
-            type: 'normal',
-            recurrenceId,
-            createdAt: serverTimestamp()
-          }));
+          // Check for existing reservation conflict
+          const existing = reservations.find(r => r.date === currentDate && r.period === p && r.tutorId === tutor.id);
+          if (existing) {
+            conflicts.push(`${currentDate} (${p}교시): ${existing.teacherName} 선생님 예약됨`);
+          } else {
+            proposedSlots.push({ date: currentDate, period: p });
+          }
         }
       }
 
-      if (batches.length === 0) {
-        alert("선택하신 시간대에 예약 가능한 근무 시간이 없습니다.");
+      // 2. Alert and block if conflicts exist
+      if (conflicts.length > 0) {
+        alert(`중복된 예약이 발견되었습니다:\n\n${conflicts.join('\n')}\n\n다른 시간을 선택하시거나 중복된 날짜를 제외해 주세요.`);
         setIsSubmitting(false);
         return;
+      }
+
+      if (proposedSlots.length === 0) {
+        alert("선택하신 시간대에 예약 가능한 시간대가 없습니다. (근무 시간이 아니거나 이미 예약됨)");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 3. Proceed with creation
+      const batches = [];
+      const recurrenceId = isRecurring ? Math.random().toString(36).substr(2, 9) : null;
+
+      for (const s of proposedSlots) {
+        batches.push(addDoc(collection(db, 'reservations'), {
+          tutorId: tutor.id,
+          date: s.date,
+          period: s.period,
+          teacherName,
+          reason: finalReason,
+          category,
+          classInfo: category === '수업 직접 보조' ? classInfo : null,
+          subjectInfo: category === '수업 직접 보조' ? subjectInfo : null,
+          locationInfo: category === '수업 직접 보조' ? locationInfo : null,
+          otherDetail: (category === '수업 직접 보조' || category === '각종 디지털 관련 업무 지원') ? otherDetail : null,
+          type: 'normal',
+          recurrenceId,
+          createdAt: serverTimestamp()
+        }));
       }
 
       await Promise.all(batches);
