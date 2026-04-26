@@ -288,30 +288,30 @@ export default function App() {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 overflow-y-auto p-4 lg:p-8 print:p-0 print:overflow-visible",
+        "flex-1 overflow-y-auto p-2 lg:p-8 print:p-0 print:overflow-visible",
         isWorkReportOpen && "print:hidden"
       )}>
-        <div ref={printRef} className="max-w-6xl mx-auto flex flex-col gap-4 lg:gap-8 print:max-w-none print:p-0">
-          <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-5 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-4">
+        <div ref={printRef} className="max-w-6xl mx-auto flex flex-col gap-3 lg:gap-8 print:max-w-none print:p-0">
+          <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-4 lg:p-8 rounded-[1rem] lg:rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-3 md:gap-4">
             <div className="flex flex-col gap-0.5 print:items-center print:w-full">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg lg:text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">
+                <h2 className="text-base lg:text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">
                   {selectedTutor?.name || (isLoading ? '로딩 중...' : '선택된 튜터 없음')} 
-                  <span className="text-[#9575CD] font-bold ml-2 print:text-black print:ml-4">주간 시간표</span>
+                  <span className="text-[#9575CD] font-bold ml-1 lg:ml-2 print:text-black print:ml-4">주간 시간표</span>
                 </h2>
               </div>
-              <p className="text-xs lg:text-sm font-bold text-[#9575CD] flex items-center gap-1.5 mt-0.5 print:text-black print:text-sm">
-                <Calendar size={14} className="text-[#9575CD] print:hidden" />
+              <p className="text-[10px] lg:text-sm font-bold text-[#9575CD] flex items-center gap-1 mt-0.5 print:text-black print:text-sm">
+                <Calendar size={12} className="text-[#9575CD] print:hidden" />
                 {format(currentWeekStart, 'yyyy년 MM월 dd일 (EEE)', { locale: ko })} — {format(addDays(currentWeekStart, 4), 'MM월 dd일 (EEE)', { locale: ko })}
               </p>
             </div>
             
-            <div className="flex bg-white/80 p-3 lg:p-4 rounded-xl lg:rounded-2xl border border-[#F3E5F5]/50 shadow-sm items-center gap-4 print:hidden self-start md:self-auto">
+            <div className="flex bg-white/80 p-2 lg:p-4 rounded-lg lg:rounded-2xl border border-[#F3E5F5]/50 shadow-sm items-center gap-3 print:hidden self-start md:self-auto">
               <div className="text-right">
-                <p className="text-base lg:text-lg font-black text-[#673AB7]">
+                <p className="text-sm lg:text-lg font-black text-[#673AB7]">
                   {format(new Date(), 'yyyy. MM. dd.(EEE)', { locale: ko })}
                 </p>
-                <p className="text-[10px] lg:text-[11px] font-bold text-[#A294CC] uppercase tracking-[0.25em] leading-none">오늘</p>
+                <p className="text-[9px] lg:text-[11px] font-bold text-[#A294CC] uppercase tracking-[0.25em] leading-none">오늘</p>
               </div>
             </div>
           </header>
@@ -346,7 +346,7 @@ export default function App() {
                 }}
               />
             ) : (
-              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[#F3E5F5] rounded-[2rem] bg-white/40 h-64 lg:h-auto">
+              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[#F3E5F5] rounded-[1.5rem] bg-white/40 h-64 lg:h-auto">
                 <div className="text-center">
                   <Users className="w-12 h-12 text-[#D1C4E9] mx-auto mb-4 opacity-50" />
                   <p className="text-[#B39DDB] font-bold">왼쪽에서 튜터를 선택해 주세요.</p>

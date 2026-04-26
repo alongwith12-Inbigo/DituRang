@@ -48,17 +48,17 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
 
   return (
     <div className="overflow-x-auto -mx-1 pb-4 lg:mx-0 lg:pb-0">
-      <div className="bg-white rounded-[1.5rem] shadow-xl overflow-hidden border border-[#F3E5F5] min-w-[600px] lg:min-w-0 print:shadow-none print:border print:rounded-none lg:print:min-w-0">
+      <div className="bg-white rounded-[1rem] lg:rounded-[1.5rem] shadow-xl overflow-hidden border border-[#F3E5F5] min-w-[480px] lg:min-w-0 print:shadow-none print:border print:rounded-none lg:print:min-w-0">
         <table className="w-full border-collapse table-fixed">
         <thead>
           <tr className="bg-[#FBF9FE]/50 print:bg-transparent">
-            <th className="w-10 lg:w-14 p-2 lg:p-3 border-b border-r border-[#F3E5F5] text-[8px] lg:text-[9px] font-black text-[#9575CD] uppercase tracking-widest text-center">
+            <th className="w-9 lg:w-14 p-1 lg:p-3 border-b border-r border-[#F3E5F5] text-[7px] lg:text-[9px] font-black text-[#9575CD] uppercase tracking-widest text-center">
               교시
             </th>
             {weekRange.map((day, idx) => (
-              <th key={idx} className="p-2 lg:p-3 border-b border-r last:border-r-0 border-[#F3E5F5] text-center print:p-1">
-                <span className="block text-base lg:text-lg font-black text-[#5E35B1] uppercase tracking-tight">{DAYS[idx]}</span>
-                <span className="block text-sm lg:text-base font-bold text-[#9575CD] mt-0.5 tracking-tighter">{day.date.split('-').slice(1).join('/')}</span>
+              <th key={idx} className="p-1 lg:p-3 border-b border-r last:border-r-0 border-[#F3E5F5] text-center print:p-1">
+                <span className="block text-xs lg:text-lg font-black text-[#5E35B1] uppercase tracking-tight">{DAYS[idx]}</span>
+                <span className="block text-[10px] lg:text-base font-bold text-[#9575CD] lg:mt-0.5 tracking-tighter">{day.date.split('-').slice(1).join('/')}</span>
               </th>
             ))}
           </tr>
@@ -82,9 +82,9 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
 
             return (
               <tr key={period}>
-                <td className="p-2 lg:p-3 border-b border-r border-[#F3E5F5] text-center print:p-1">
-                  <span className="block text-lg lg:text-xl font-black text-[#9575CD] leading-none mb-0.5 lg:mb-1 tracking-tighter">{period}</span>
-                  <span className="block text-[10px] lg:text-[11px] font-bold text-[#BA68C8] scale-90 lg:scale-100">{PERIOD_TIMES[period as keyof typeof PERIOD_TIMES]}</span>
+                <td className="p-1 lg:p-3 border-b border-r border-[#F3E5F5] text-center print:p-1">
+                  <span className="block text-base lg:text-xl font-black text-[#9575CD] leading-none mb-0.5 lg:mb-1 tracking-tighter">{period}</span>
+                  <span className="block text-[8px] lg:text-[11px] font-bold text-[#BA68C8] scale-90 lg:scale-100">{PERIOD_TIMES[period as keyof typeof PERIOD_TIMES]}</span>
                 </td>
                 {weekRange.map((day, dIdx) => {
                   const reservation = getReservation(day.date, period);
@@ -100,7 +100,7 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
                         }
                       }}
                       className={cn(
-                        "p-1 border-b border-r last:border-r-0 border-[#FDFBFF] relative group h-14 min-h-[56px] print:h-12 transition-all cursor-default",
+                        "p-0.5 lg:p-1 border-b border-r last:border-r-0 border-[#FDFBFF] relative group h-10 lg:h-14 min-h-[40px] lg:min-h-[56px] print:h-12 transition-all cursor-default",
                         !active && "bg-[#F9F8FD]/40 opacity-30 cursor-not-allowed",
                         active && !reservation && (tutor.id === 'tutor1' ? "bg-[#FFE0E6] hover:bg-[#FFD1DA] cursor-pointer" : "bg-[#E3F2FF] hover:bg-[#D4E9FF] cursor-pointer"),
                         active && reservation && (tutor.id === 'tutor1' ? "bg-[#FFC1D1]" : "bg-[#B3E5FC]")
@@ -110,20 +110,20 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
                         <motion.div 
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          className="w-full h-full p-1 rounded-lg flex flex-col justify-between relative overflow-hidden"
+                          className="w-full h-full p-0.5 lg:p-1 rounded-lg flex flex-col justify-between relative overflow-hidden"
                         >
                           {(reservation.type === 'priority' || reservation.category === '수업 직접 보조') && (
                             <Star 
-                              size={10} 
+                              size={8} 
                               className="absolute top-0.5 right-0.5 text-amber-600" 
                               fill="currentColor" 
                             />
                           )}
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[11px] lg:text-[13px] font-black text-black leading-tight">
+                            <span className="text-[9px] lg:text-[13px] font-black text-black leading-tight">
                               {reservation.teacherName}
                             </span>
-                            <span className="text-[10px] lg:text-[12px] font-extrabold text-[#000000] leading-[1.2] line-clamp-2">
+                            <span className="text-[8px] lg:text-[12px] font-extrabold text-[#000000] leading-[1.1] lg:leading-[1.2] line-clamp-2">
                               {reservation.reason}
                             </span>
                           </div>
