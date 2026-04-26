@@ -1,6 +1,6 @@
 {
-  "name": "디튜랑 (DiTu-Rang) 디지털 튜터 예약 시스템",
-  "description": "디지털 튜터 예약 및 일정 관리 시스템. 저채도 파스텔톤의 눈이 편안한 UI와 주간 시간표 인쇄 기능을 제공합니다.",
+  "name": "디지털 튜터 예약 시스템 (DiTu-Rang)",
+  "description": "학교용 디지털 튜터 주간 시간표 확인 및 예약 관리 시스템",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

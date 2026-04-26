@@ -288,11 +288,11 @@ export default function App() {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 overflow-y-auto p-4 lg:p-12 print:p-0 print:overflow-visible",
+        "flex-1 overflow-y-auto p-4 lg:p-8 print:p-0 print:overflow-visible",
         isWorkReportOpen && "print:hidden"
       )}>
-        <div ref={printRef} className="max-w-6xl mx-auto flex flex-col gap-6 lg:gap-8 print:max-w-none print:p-0">
-          <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-4">
+        <div ref={printRef} className="max-w-6xl mx-auto flex flex-col gap-4 lg:gap-8 print:max-w-none print:p-0">
+          <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-5 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-4">
             <div className="flex flex-col gap-0.5 print:items-center print:w-full">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg lg:text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">

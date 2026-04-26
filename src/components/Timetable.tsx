@@ -52,13 +52,13 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
         <table className="w-full border-collapse table-fixed">
         <thead>
           <tr className="bg-[#FBF9FE]/50 print:bg-transparent">
-            <th className="w-14 p-3 border-b border-r border-[#F3E5F5] text-[9px] font-black text-[#9575CD] uppercase tracking-widest text-center">
+            <th className="w-10 lg:w-14 p-2 lg:p-3 border-b border-r border-[#F3E5F5] text-[8px] lg:text-[9px] font-black text-[#9575CD] uppercase tracking-widest text-center">
               교시
             </th>
             {weekRange.map((day, idx) => (
-              <th key={idx} className="p-3 border-b border-r last:border-r-0 border-[#F3E5F5] text-center print:p-1">
-                <span className="block text-lg font-black text-[#5E35B1] uppercase tracking-tight">{DAYS[idx]}</span>
-                <span className="block text-base font-bold text-[#9575CD] mt-0.5 tracking-tighter">{day.date.split('-').slice(1).join('/')}</span>
+              <th key={idx} className="p-2 lg:p-3 border-b border-r last:border-r-0 border-[#F3E5F5] text-center print:p-1">
+                <span className="block text-base lg:text-lg font-black text-[#5E35B1] uppercase tracking-tight">{DAYS[idx]}</span>
+                <span className="block text-sm lg:text-base font-bold text-[#9575CD] mt-0.5 tracking-tighter">{day.date.split('-').slice(1).join('/')}</span>
               </th>
             ))}
           </tr>
@@ -69,7 +69,7 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
               return (
                 <tr key="lunch" className="bg-[#FCFBFF] print:bg-transparent">
                   <td className="p-2 border-b border-r border-[#F3E5F5] text-center">
-                    <span className="text-[13px] font-black text-[#9575CD] uppercase tracking-widest">점심시간</span>
+                    <span className="text-[11px] lg:text-[13px] font-black text-[#9575CD] uppercase tracking-widest">점심시간</span>
                   </td>
                   <td colSpan={5} className="p-1 border-b border-[#F3E5F5] text-center italic text-[#BA68C8] text-[11px] font-bold tracking-widest leading-none uppercase">
                     {PERIOD_TIMES.l} (12:40 - 13:40)
@@ -82,9 +82,9 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
 
             return (
               <tr key={period}>
-                <td className="p-3 border-b border-r border-[#F3E5F5] text-center print:p-1">
-                  <span className="block text-xl font-black text-[#9575CD] leading-none mb-1 tracking-tighter">{period}</span>
-                  <span className="block text-[11px] font-bold text-[#BA68C8]">{PERIOD_TIMES[period as keyof typeof PERIOD_TIMES]}</span>
+                <td className="p-2 lg:p-3 border-b border-r border-[#F3E5F5] text-center print:p-1">
+                  <span className="block text-lg lg:text-xl font-black text-[#9575CD] leading-none mb-0.5 lg:mb-1 tracking-tighter">{period}</span>
+                  <span className="block text-[10px] lg:text-[11px] font-bold text-[#BA68C8] scale-90 lg:scale-100">{PERIOD_TIMES[period as keyof typeof PERIOD_TIMES]}</span>
                 </td>
                 {weekRange.map((day, dIdx) => {
                   const reservation = getReservation(day.date, period);
@@ -120,10 +120,10 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick 
                             />
                           )}
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-[12px] lg:text-[13px] font-black text-black leading-tight">
+                            <span className="text-[11px] lg:text-[13px] font-black text-black leading-tight">
                               {reservation.teacherName}
                             </span>
-                            <span className="text-[11px] lg:text-[12px] font-extrabold text-[#000000] leading-[1.2] line-clamp-2">
+                            <span className="text-[10px] lg:text-[12px] font-extrabold text-[#000000] leading-[1.2] line-clamp-2">
                               {reservation.reason}
                             </span>
                           </div>
