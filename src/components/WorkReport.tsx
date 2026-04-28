@@ -125,14 +125,19 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
         const subjectPart = firstRes.subjectInfo ? `${firstRes.subjectInfo} ` : '';
         firstSummary = `${classPart}${subjectPart}수업 보조`.trim();
       } else {
-        firstSummary = firstRes.category || firstRes.reason || "정보부 업무 보조";
+        // Priority: otherDetail (구체적인 지원 내용) -> reason (지원 사유)
+        firstSummary = firstRes.otherDetail || firstRes.reason || "정보부 업무 보조";
       }
     }
     
     // count unique categories/tasks to decide "etc"
     const uniqueTasks = new Set(dayRes.map(r => {
-      if (r.category === '수업 직접 보조') return `수업보조-${r.classInfo || ''}-${r.subjectInfo || ''}`;
-      return r.category || r.reason;
+      if (r.category === '수업 직접 보조') {
+        const classPart = r.classInfo ? `${r.classInfo} ` : '';
+        const subjectPart = r.subjectInfo ? `${r.subjectInfo} ` : '';
+        return `${classPart}${subjectPart}수업 보조`.trim();
+      }
+      return r.otherDetail || r.reason || "정보부 업무 보조";
     }));
     const hasMore = uniqueTasks.size > 1;
 
