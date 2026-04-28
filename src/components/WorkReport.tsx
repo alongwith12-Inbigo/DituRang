@@ -96,7 +96,9 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
     .map(date => {
     const dayRes = [...groupedByDate[date]].sort((a, b) => a.period - b.period);
     
-    const firstRes = dayRes[0];
+    // Find the first "real" reservation (not a default placeholder)
+    const realRes = dayRes.filter(r => r.id && !r.id.startsWith('default-'));
+    const firstRes = realRes.length > 0 ? realRes[0] : dayRes[0];
     
     let firstSummary = "업무 보조";
     if (firstRes) {
@@ -110,8 +112,9 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
       }
     }
     
-    // count unique categories/tasks to decide "etc"
-    const uniqueTasks = new Set(dayRes.map(r => {
+    // Count unique tasks to decide "etc" - only count real tasks if they exist
+    const tasksToConsider = realRes.length > 0 ? realRes : dayRes;
+    const uniqueTasks = new Set(tasksToConsider.map(r => {
       if (r.category === '수업 직접 보조') {
         const classPart = r.classInfo ? `${r.classInfo} ` : '';
         const subjectPart = r.subjectInfo ? `${r.subjectInfo} ` : '';
