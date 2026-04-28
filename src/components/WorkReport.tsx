@@ -94,29 +94,9 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
     .filter(dateStr => dateStr >= '2026-04-28') // Enforce system start date
     .sort()
     .map(date => {
-    const dayRes = groupedByDate[date].sort((a, b) => {
-      // Sort by period for the list of periods
-      if (a.period !== b.period) return a.period - b.period;
-      // Secondary sort by registration time (if available)
-      const timeA = (a.createdAt as any)?.seconds || 0;
-      const timeB = (b.createdAt as any)?.seconds || 0;
-      return timeA - timeB;
-    });
+    const dayRes = [...groupedByDate[date]].sort((a, b) => a.period - b.period);
     
-    // For description, we want the "first registered" REAL reservation if possible
-    const realReservations = dayRes.filter(r => r.id && !r.id.startsWith('default-'));
-    
-    let firstRes: Reservation;
-    if (realReservations.length > 0) {
-      firstRes = realReservations.sort((a, b) => {
-        const timeA = (a.createdAt as any)?.seconds || 0;
-        const timeB = (b.createdAt as any)?.seconds || 0;
-        if (timeA !== timeB && timeA !== 0 && timeB !== 0) return timeA - timeB;
-        return a.period - b.period;
-      })[0];
-    } else {
-      firstRes = dayRes[0];
-    }
+    const firstRes = dayRes[0];
     
     let firstSummary = "업무 보조";
     if (firstRes) {
