@@ -1,22 +1,28 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { X, Save, Lock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History } from 'lucide-react';
-import { setDoc, doc, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { X, Save, Lock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users } from 'lucide-react';
+import { setDoc, doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { startOfWeek, startOfToday, addWeeks, addDays, format } from 'date-fns';
 import { db } from '../lib/firebase';
-import { Tutor, DAYS } from '../types';
+import { Tutor, DAYS, SchoolEvent } from '../types';
 import { cn } from '../lib/utils';
 
 interface AdminPanelProps {
   tutors: Tutor[];
+  schoolEvents: SchoolEvent[];
   onClose: () => void;
 }
 
-export default function AdminPanel({ tutors, onClose }: AdminPanelProps) {
+export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanelProps) {
   const [password, setPassword] = React.useState('');
   const [isAuthorized, setIsAuthorized] = React.useState(false);
   const [editTutors, setEditTutors] = React.useState<Tutor[]>([]);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<'tutor' | 'calendar'>('tutor');
+
+  // Academic Calendar State
+  const [newEventDate, setNewEventDate] = React.useState(format(new Date(), 'yyyy-MM-dd'));
+  const [newEventTitle, setNewEventTitle] = React.useState('');
   
   // Week management
   const [selectedWeekOffset, setSelectedWeekOffset] = React.useState(0);
@@ -58,6 +64,31 @@ export default function AdminPanel({ tutors, onClose }: AdminPanelProps) {
 
   const handleUpdateName = (id: string, name: string) => {
     setEditTutors(prev => prev.map(t => t.id === id ? { ...t, name } : t));
+  };
+
+  const handleAddEvent = async () => {
+    if (!newEventTitle.trim()) return;
+    try {
+      await addDoc(collection(db, 'school_events'), {
+        date: newEventDate,
+        title: newEventTitle,
+        createdAt: serverTimestamp()
+      });
+      setNewEventTitle('');
+    } catch (err) {
+      console.error(err);
+      alert("일정 추가 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    if (!confirm("정말 이 일정을 삭제할까요?")) return;
+    try {
+      await deleteDoc(doc(db, 'school_events', id));
+    } catch (err) {
+      console.error(err);
+      alert("일정 삭제 중 오류가 발생했습니다.");
+    }
   };
 
   const toggleDayPeriod = (tutorId: string, dayIdx: number, period: number) => {
@@ -227,47 +258,36 @@ export default function AdminPanel({ tutors, onClose }: AdminPanelProps) {
               <Settings size={22} />
             </div>
             <div className="flex flex-col">
-              <h2 className="text-xl font-black text-[#455A64]">시간표 마스터 관리</h2>
-              <p className="text-[10px] font-bold text-[#B0BEC5] tracking-widest uppercase mt-0.5">Tutor Assets & Period Overrides</p>
+              <h2 className="text-xl font-black text-[#455A64]">
+                {activeTab === 'tutor' ? '시간표 마스터 관리' : '학사일정 관리'}
+              </h2>
+              <p className="text-[10px] font-bold text-[#B0BEC5] tracking-widest uppercase mt-0.5">
+                {activeTab === 'tutor' ? 'Tutor Assets & Period Overrides' : 'School Academic Calendar'}
+              </p>
             </div>
           </div>
           
           <div className="flex items-center gap-4 bg-white p-1.5 rounded-2xl border border-[#EEEEEE] shadow-sm">
             <div className="flex">
               <button 
-                onClick={() => setEditMode('default')}
+                onClick={() => setActiveTab('tutor')}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold transition-all",
-                  editMode === 'default' ? "bg-[#455A64] text-white" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
+                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                  activeTab === 'tutor' ? "bg-[#455A64] text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
                 )}
               >
-                기본 주간 (Default)
+                <Users size={14} /> 튜터 및 시간표
               </button>
               <button 
-                onClick={() => setEditMode('week')}
+                onClick={() => setActiveTab('calendar')}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold transition-all",
-                  editMode === 'week' ? "bg-[#455A64] text-white" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
+                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                  activeTab === 'calendar' ? "bg-[#FBC02D] text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
                 )}
               >
-                특정 주차 (Override)
+                <Calendar size={14} /> 학사일정 관리
               </button>
             </div>
-
-            {editMode === 'week' && (
-              <div className="flex items-center gap-2 border-l pl-4 border-[#EEEEEE]">
-                <select 
-                  value={selectedWeekOffset}
-                  onChange={e => setSelectedWeekOffset(Number(e.target.value))}
-                  className="bg-transparent text-xs font-bold text-[#455A64] outline-none cursor-pointer"
-                >
-                  {currentWeeks.map((week, idx) => {
-                    const start = parseISO(week);
-                    return <option key={idx} value={idx}>{format(start, 'M월 ')}{Math.ceil(format(start, 'd') as any / 7)}째주</option>
-                  })}
-                </select>
-              </div>
-            )}
           </div>
 
           <button onClick={onClose} className="p-2 hover:bg-white rounded-full transition-colors text-[#B0BEC5]">
@@ -275,19 +295,59 @@ export default function AdminPanel({ tutors, onClose }: AdminPanelProps) {
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-10 space-y-10">
-          {editMode === 'week' && (
-            <div className="p-6 bg-blue-50 border border-blue-100 rounded-3xl flex items-start gap-4">
-               <Calendar size={24} className="text-blue-500 shrink-0 mt-1" />
-               <div className="flex flex-col gap-1">
-                 <h4 className="text-sm font-black text-blue-700">특정 주차 개별 설정 모드</h4>
-                 <p className="text-xs text-blue-600/80 leading-relaxed">
-                   현재 <strong>{format(parseISO(targetWeekStart), 'yyyy년 MM월 dd일')}</strong>이 포함된 주차를 편집 중입니다. 
-                   이 주차의 설정만 변경되며, 기본 주간 설정은 영향을 받지 않습니다.
-                 </p>
-               </div>
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto p-10">
+          {activeTab === 'tutor' ? (
+            <div className="space-y-10">
+              <div className="flex items-center gap-4 bg-white p-1.5 rounded-2xl border border-[#EEEEEE] shadow-sm self-start mb-6 w-fit">
+                <div className="flex">
+                  <button 
+                    onClick={() => setEditMode('default')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                      editMode === 'default' ? "bg-[#455A64] text-white" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
+                    )}
+                  >
+                    기본 주간 (Default)
+                  </button>
+                  <button 
+                    onClick={() => setEditMode('week')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                      editMode === 'week' ? "bg-[#455A64] text-white" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
+                    )}
+                  >
+                    특정 주차 (Override)
+                  </button>
+                </div>
+
+                {editMode === 'week' && (
+                  <div className="flex items-center gap-2 border-l pl-4 border-[#EEEEEE]">
+                    <select 
+                      value={selectedWeekOffset}
+                      onChange={e => setSelectedWeekOffset(Number(e.target.value))}
+                      className="bg-transparent text-xs font-bold text-[#455A64] outline-none cursor-pointer"
+                    >
+                      {currentWeeks.map((week, idx) => {
+                        const start = parseISO(week);
+                        return <option key={idx} value={idx}>{format(start, 'M월 ')}{Math.ceil(format(start, 'd') as any / 7)}째주</option>
+                      })}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {editMode === 'week' && (
+                <div className="p-6 bg-blue-50 border border-blue-100 rounded-3xl flex items-start gap-4">
+                  <Calendar size={24} className="text-blue-500 shrink-0 mt-1" />
+                  <div className="flex flex-col gap-1">
+                    <h4 className="text-sm font-black text-blue-700">특정 주차 개별 설정 모드</h4>
+                    <p className="text-xs text-blue-600/80 leading-relaxed">
+                      현재 <strong>{format(parseISO(targetWeekStart), 'yyyy년 MM월 dd일')}</strong>이 포함된 주차를 편집 중입니다. 
+                      이 주차의 설정만 변경되며, 기본 주간 설정은 영향을 받지 않습니다.
+                    </p>
+                  </div>
+                </div>
+              )}
 
           {editTutors.map((tutor, tIdx) => {
             const currentSchedule = (editMode === 'week' && tutor.weekOverrides?.[targetWeekStart]) 
@@ -433,20 +493,98 @@ export default function AdminPanel({ tutors, onClose }: AdminPanelProps) {
                 </div>
               </section>
             )})}
+            </div>
+          ) : (
+            <div className="space-y-8 max-w-2xl mx-auto">
+              <section className="p-8 bg-amber-50/30 rounded-[2.5rem] border border-amber-100/50 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Plus size={20} className="text-amber-500" />
+                  <h3 className="text-lg font-black text-[#5D4037]">새로운 일정 추가</h3>
+                </div>
+                
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex flex-col gap-1 w-full md:w-48">
+                    <label className="text-[10px] font-bold text-[#A1887F] uppercase ml-1">날짜</label>
+                    <input 
+                      type="date"
+                      value={newEventDate}
+                      onChange={e => setNewEventDate(e.target.value)}
+                      className="px-4 py-3 bg-white border border-amber-100 rounded-2xl font-bold text-[#5D4037] outline-none focus:ring-4 focus:ring-amber-100 transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <label className="text-[10px] font-bold text-[#A1887F] uppercase ml-1">일정 내용</label>
+                    <input 
+                      type="text"
+                      placeholder="예: 기말고사, 개교기념일 등"
+                      value={newEventTitle}
+                      onChange={e => setNewEventTitle(e.target.value)}
+                      className="px-4 py-3 bg-white border border-amber-100 rounded-2xl font-bold text-[#5D4037] outline-none focus:ring-4 focus:ring-amber-100 transition-all"
+                    />
+                  </div>
+                  <button 
+                    onClick={handleAddEvent}
+                    className="md:mt-auto px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black shadow-lg shadow-amber-100 transition-all flex items-center justify-center gap-2"
+                  >
+                    추가 <Plus size={18} />
+                  </button>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <h3 className="text-xs font-black text-[#B0BEC5] uppercase tracking-widest pl-4">등록된 학사일정</h3>
+                <div className="flex flex-col gap-2">
+                  {schoolEvents
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map(event => (
+                    <div key={event.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-[#EEEEEE] hover:border-amber-200 transition-all group">
+                      <div className="flex items-center gap-6">
+                        <span className="text-xs font-mono font-bold text-[#90A4AE] bg-[#F5F7F8] px-3 py-1 rounded-lg">
+                          {event.date}
+                        </span>
+                        <span className="font-bold text-[#455A64]">{event.title}</span>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteEvent(event.id)}
+                        className="p-2 text-[#CFD8DC] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  {schoolEvents.length === 0 && (
+                    <div className="py-20 text-center bg-[#F9F9F9] rounded-[2.5rem] border border-dashed border-[#EEEEEE]">
+                      <Calendar size={48} className="mx-auto text-[#E0E0E0] mb-4" />
+                      <p className="text-[#B0BEC5] font-bold italic">등록된 학사일정이 없습니다.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
         </div>
 
-        <footer className="px-10 py-6 bg-[#F9F9F9] border-t border-[#EEEEEE] flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 text-[#90A4AE]">
-             <Info size={16} />
-             <p className="text-[10px] font-bold italic tracking-tight">수정된 사항은 '저장' 버튼을 눌러야 최종 반영됩니다.</p>
-          </div>
-          <button 
-            disabled={isSaving}
-            onClick={handleSave}
-            className="px-12 py-4 bg-[#455A64] hover:bg-[#37474F] disabled:bg-[#CFD8DC] text-white rounded-2xl font-bold shadow-xl shadow-slate-100 transition-all flex items-center gap-3"
-          >
-            {isSaving ? "처리 중..." : <><Save size={18} /> 최종 설정 저장하기</>}
-          </button>
+        <footer className="px-10 py-6 bg-[#F9F9F9] border-b border-[#EEEEEE] flex items-center justify-between shrink-0">
+          {activeTab === 'tutor' ? (
+            <>
+              <div className="flex items-center gap-2 text-[#90A4AE]">
+                 <Info size={16} />
+                 <p className="text-[10px] font-bold italic tracking-tight">수정된 사항은 '저장' 버튼을 눌러야 최종 반영됩니다.</p>
+              </div>
+              <button 
+                disabled={isSaving}
+                onClick={handleSave}
+                className="px-12 py-4 bg-[#455A64] hover:bg-[#37474F] disabled:bg-[#CFD8DC] text-white rounded-2xl font-bold shadow-xl shadow-slate-100 transition-all flex items-center gap-3"
+              >
+                {isSaving ? "처리 중..." : <><Save size={18} /> 최종 설정 저장하기</>}
+              </button>
+            </>
+          ) : (
+             <div className="flex items-center gap-2 text-[#B0BEC5]">
+               <Info size={16} />
+               <p className="text-[10px] font-bold italic tracking-tight">학사일정은 추가/삭제 즉시 서버에 반영됩니다.</p>
+             </div>
+          )}
         </footer>
       </motion.div>
     </div>

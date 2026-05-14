@@ -9,18 +9,20 @@ import {
   Reservation, 
   PERIOD_TIMES, 
   DAYS, 
+  SchoolEvent,
 } from '../types';
 import { cn } from '../lib/utils';
 
 interface TimetableProps {
   tutor: Tutor | undefined;
   reservations: Reservation[];
+  schoolEvents: SchoolEvent[];
   weekRange: { date: string; label: string }[];
   onSlotClick: (date: string, period: number) => void;
   onReservationClick: (reservation: Reservation) => void;
 }
 
-export default function Timetable({ tutor, reservations, weekRange, onSlotClick, onReservationClick }: TimetableProps) {
+export default function Timetable({ tutor, reservations, schoolEvents, weekRange, onSlotClick, onReservationClick }: TimetableProps) {
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
   if (!tutor) return null;
@@ -62,6 +64,21 @@ export default function Timetable({ tutor, reservations, weekRange, onSlotClick,
                 <span className="block text-[8px] lg:text-base font-bold text-[#9575CD] lg:mt-0.5 tracking-tighter">{day.date.split('-').slice(1).join('/')}</span>
               </th>
             ))}
+          </tr>
+          <tr className="bg-[#FFF9C4]/20 print:bg-transparent">
+            <th className="w-7 lg:w-14 p-0.5 lg:p-2 border-b border-r border-[#F3E5F5] text-[7px] lg:text-[9px] font-black text-[#FBC02D] uppercase tracking-widest text-center">
+              일정
+            </th>
+            {weekRange.map((day, idx) => {
+              const event = schoolEvents.find(e => e.date === day.date);
+              return (
+                <th key={idx} className="p-1 lg:p-2 border-b border-r last:border-r-0 border-[#F3E5F5] text-center">
+                  <span className="block text-[8px] lg:text-[11px] font-bold text-[#F9A825] leading-tight line-clamp-1">
+                    {event?.title || "-"}
+                  </span>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>

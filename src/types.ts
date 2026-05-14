@@ -1,3 +1,11 @@
+export interface SchoolEvent {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  description?: string;
+  createdAt: any;
+}
+
 export type ReservationType = 'priority' | 'normal';
 
 export interface Tutor {

@@ -45,7 +45,8 @@ import {
   Reservation, 
   PERIOD_TIMES, 
   DAYS, 
-  ReservationType 
+  ReservationType,
+  SchoolEvent
 } from './types';
 
 // Components
@@ -57,6 +58,7 @@ import WorkReport from './components/WorkReport';
 export default function App() {
   const [tutors, setTutors] = React.useState<Tutor[]>([]);
   const [reservations, setReservations] = React.useState<Reservation[]>([]);
+  const [schoolEvents, setSchoolEvents] = React.useState<SchoolEvent[]>([]);
   const [selectedTutorId, setSelectedTutorId] = React.useState<string>('');
   const [selectedWeekOffset, setSelectedWeekOffset] = React.useState(0);
   const [isAdminOpen, setIsAdminOpen] = React.useState(false);
@@ -108,9 +110,16 @@ export default function App() {
       setReservations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation)));
     });
 
+    // Sub for School Events
+    const eventsQuery = collection(db, 'school_events');
+    const unsubscribeEvents = onSnapshot(eventsQuery, (snapshot) => {
+      setSchoolEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolEvent)));
+    });
+
     return () => {
       unsubscribeTutors();
       unsubscribeReservations();
+      unsubscribeEvents();
     };
   }, []);
 
@@ -340,6 +349,7 @@ export default function App() {
               <Timetable 
                 tutor={selectedTutor} 
                 reservations={reservations} 
+                schoolEvents={schoolEvents}
                 weekRange={weekRange}
                 onSlotClick={(date, period) => {
                   setSelectedSlot({ date, period });
@@ -386,6 +396,7 @@ export default function App() {
         {isAdminOpen && (
           <AdminPanel 
             tutors={tutors}
+            schoolEvents={schoolEvents}
             onClose={() => setIsAdminOpen(false)}
           />
         )}
