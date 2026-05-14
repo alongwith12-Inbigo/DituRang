@@ -30,9 +30,15 @@ service cloud.firestore {
              data.teacherName is string && data.teacherName.size() <= 100;
     }
 
+    // Helper for SchoolEvent
+    function isValidSchoolEvent(data) {
+      return data.date is string && data.date.size() == 10 &&
+             data.title is string && data.title.size() <= 200;
+    }
+
     match /tutors/{tutorId} {
       allow read: if true;
-      allow write: if true; // In a real app, I'd restrict this to Admin, but using PW check in UI for now
+      allow write: if true; 
     }
 
     match /reservations/{resId} {
@@ -40,6 +46,11 @@ service cloud.firestore {
       allow create: if isValidReservation(request.resource.data);
       allow update: if isValidReservation(request.resource.data);
       allow delete: if true; 
+    }
+
+    match /school_events/{eventId} {
+      allow read: if true;
+      allow write: if true;
     }
   }
 }

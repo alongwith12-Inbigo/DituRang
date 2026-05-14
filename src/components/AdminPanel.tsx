@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { X, Save, Lock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users } from 'lucide-react';
 import { setDoc, doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { startOfWeek, startOfToday, addWeeks, addDays, format } from 'date-fns';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { Tutor, DAYS, SchoolEvent } from '../types';
 import { cn } from '../lib/utils';
 
@@ -75,9 +75,20 @@ export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanel
         createdAt: serverTimestamp()
       });
       setNewEventTitle('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("일정 추가 중 오류가 발생했습니다.");
+      const errInfo = {
+        error: err.message || String(err),
+        operationType: 'create',
+        path: 'school_events',
+        authInfo: {
+          userId: auth.currentUser?.uid,
+          email: auth.currentUser?.email,
+          emailVerified: auth.currentUser?.emailVerified
+        }
+      };
+      console.error('Firestore Error:', JSON.stringify(errInfo));
+      alert(`일정 추가 중 오류가 발생했습니다: ${err.message}`);
     }
   };
 
@@ -85,8 +96,19 @@ export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanel
     if (!confirm("정말 이 일정을 삭제할까요?")) return;
     try {
       await deleteDoc(doc(db, 'school_events', id));
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      const errInfo = {
+        error: err.message || String(err),
+        operationType: 'delete',
+        path: `school_events/${id}`,
+        authInfo: {
+          userId: auth.currentUser?.uid,
+          email: auth.currentUser?.email,
+          emailVerified: auth.currentUser?.emailVerified
+        }
+      };
+      console.error('Firestore Error:', JSON.stringify(errInfo));
       alert("일정 삭제 중 오류가 발생했습니다.");
     }
   };

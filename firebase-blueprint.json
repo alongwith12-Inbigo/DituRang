@@ -30,6 +30,17 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["tutorId", "date", "period", "reason", "type", "teacherName"]
+    },
+    "school_event": {
+      "title": "School Event",
+      "description": "Academic calendar event",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
+        "title": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "title"]
     }
   },
   "firestore": {
@@ -40,6 +51,10 @@
     "reservations": {
       "schema": "reservation",
       "description": "Collection of all reservations"
+    },
+    "school_events": {
+      "schema": "school_event",
+      "description": "Collection of academic calendar events"
     }
   }
 }
