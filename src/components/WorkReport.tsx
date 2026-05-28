@@ -186,7 +186,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                   box-sizing: border-box;
                 }
                 @media print {
-                  @page { size: A4; margin: 1.2cm 1.5cm; }
+                  @page { size: A4; margin: 1.6cm 1.5cm 1.2cm 1.5cm; }
                   body { margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
                   .report-container {
                     width: 100% !important;
@@ -223,9 +223,9 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                 }
               `}} />
               
-              <div className="text-center mb-12 print:mb-8 mt-4 print:mt-2">
-                <h1 className="text-3xl print:text-2xl font-black tracking-[0.3em] mb-10 print:mb-6 border-b-4 border-black inline-block pb-2">디지털 튜터 근무확인서</h1>
-                <div className="flex justify-end gap-12 mt-4 print:mt-2 pr-4">
+              <div className="text-center mb-12 print:mb-6 mt-4 print:mt-6">
+                <h1 className="text-3xl print:text-2xl font-black tracking-[0.3em] mb-10 print:mb-4 border-b-4 border-black inline-block pb-2">디지털 튜터 근무확인서</h1>
+                <div className="flex justify-end gap-12 mt-4 print:mt-1 pr-4">
                   <span className="text-lg print:text-base font-bold">강사명: <span className="underline underline-offset-[12px] px-8 text-xl print:text-lg font-black">{tutor.name}</span> (서명/인)</span>
                 </div>
               </div>
