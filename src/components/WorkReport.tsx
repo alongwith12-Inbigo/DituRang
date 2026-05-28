@@ -198,6 +198,10 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                   .report-table th, .report-table td {
                     padding: 3px 4px !important;
                   }
+                  .report-table td.task-description-cell {
+                    padding-left: 12px !important;
+                    padding-right: 12px !important;
+                  }
                 }
                 .report-table { border-collapse: collapse; width: 100%; border: 1.5px solid #333; table-layout: fixed; }
                 .report-table th, .report-table td {
@@ -205,7 +209,17 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                   padding: 6px 4px;
                   word-break: break-all;
                   vertical-align: middle;
+                }
+                .report-table th {
+                  text-align: center !important;
+                }
+                .report-table td {
                   text-align: center;
+                }
+                .report-table td.task-description-cell {
+                  text-align: left !important;
+                  padding-left: 14px !important;
+                  padding-right: 14px !important;
                 }
               `}} />
               
@@ -219,9 +233,9 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
               <table className="report-table text-[12px] text-center">
                 <thead>
                   <tr className="bg-gray-100/50 h-10 print:h-8">
-                    <th className="w-[32px]">연번</th>
-                    <th className="w-[110px]">일 시</th>
-                    <th className="w-[110px]">근무 시간</th>
+                    <th className="w-[45px]">연번</th>
+                    <th className="w-[125px]">일 시</th>
+                    <th className="w-[125px]">근무 시간</th>
                     <th className="">주 요 업 무</th>
                     <th className="w-[56px]">확 인</th>
                   </tr>
@@ -232,7 +246,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                       <td>{idx + 1}</td>
                       <td className="text-[11px] print:text-[11px] whitespace-nowrap">{format(parseISO(row.date), 'yyyy. MM. dd. (EEE)', { locale: ko })}</td>
                       <td className="text-[11px] print:text-[11px] whitespace-nowrap">{row.count}시간 ({row.periods}교시)</td>
-                      <td className="text-left px-3 font-medium text-[11.5px] print:text-[11px]">
+                      <td className="task-description-cell font-medium text-[11.5px] print:text-[11px]">
                         <div className="line-clamp-2 leading-[14px] print:leading-[12px]">
                           {row.description}
                         </div>
