@@ -196,13 +196,16 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                     box-shadow: none !important;
                   }
                   .report-table th, .report-table td {
-                    padding: 4px 4px !important;
+                    padding: 3px 4px !important;
                   }
                 }
-                .report-table { border-collapse: collapse; width: 100%; border: 1.5px solid #333; }
+                .report-table { border-collapse: collapse; width: 100%; border: 1.5px solid #333; table-layout: fixed; }
                 .report-table th, .report-table td {
                   border: 1px solid #333 !important;
-                  padding: 8px 4px;
+                  padding: 6px 4px;
+                  word-break: break-all;
+                  vertical-align: middle;
+                  text-align: center;
                 }
               `}} />
               
@@ -216,20 +219,24 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
               <table className="report-table text-[12px] text-center">
                 <thead>
                   <tr className="bg-gray-100/50 h-10 print:h-8">
-                    <th className="w-12">연번</th>
-                    <th className="w-40">일 시</th>
-                    <th className="w-40">근무 시간</th>
+                    <th className="w-[32px]">연번</th>
+                    <th className="w-[110px]">일 시</th>
+                    <th className="w-[110px]">근무 시간</th>
                     <th className="">주 요 업 무</th>
-                    <th className="w-24">확 인</th>
+                    <th className="w-[56px]">확 인</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rowData.map((row, idx) => (
                     <tr key={idx} className="h-10 print:h-8">
                       <td>{idx + 1}</td>
-                      <td>{format(parseISO(row.date), 'yyyy. MM. dd. (EEE)', { locale: ko })}</td>
-                      <td>{row.count}시간 ({row.periods}교시)</td>
-                      <td className="text-left px-6 font-medium">{row.description}</td>
+                      <td className="text-[11px] print:text-[11px] whitespace-nowrap">{format(parseISO(row.date), 'yyyy. MM. dd. (EEE)', { locale: ko })}</td>
+                      <td className="text-[11px] print:text-[11px] whitespace-nowrap">{row.count}시간 ({row.periods}교시)</td>
+                      <td className="text-left px-3 font-medium text-[11.5px] print:text-[11px]">
+                        <div className="line-clamp-2 leading-[14px] print:leading-[12px]">
+                          {row.description}
+                        </div>
+                      </td>
                       <td></td>
                     </tr>
                   ))}
@@ -244,7 +251,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                   ))}
                   <tr className="h-10 print:h-8 bg-gray-50/50 font-bold">
                     <td colSpan={2}>계</td>
-                    <td>{rowData.reduce((acc, row) => acc + row.count, 0)}시간</td>
+                    <td className="text-[11px] print:text-[11px]">{rowData.reduce((acc, row) => acc + row.count, 0)}시간</td>
                     <td colSpan={2}></td>
                   </tr>
                 </tbody>
