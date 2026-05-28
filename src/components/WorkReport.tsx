@@ -186,7 +186,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                   box-sizing: border-box;
                 }
                 @media print {
-                  @page { size: A4; margin: 1.6cm 1.5cm 1.2cm 1.5cm; }
+                  @page { size: A4; margin: 3.0cm 1.5cm 1.5cm 1.5cm; }
                   body { margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
                   .report-container {
                     width: 100% !important;
