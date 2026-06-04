@@ -165,6 +165,54 @@ export default function App() {
     window.location.reload();
   };
 
+  const handleDownloadPrivacyPolicy = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'privacy_files'));
+      if (querySnapshot.empty) {
+        alert('등록된 개인정보처리방침 파일이 없습니다.');
+        return;
+      }
+      
+      const files = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as any));
+      
+      files.sort((a, b) => {
+        const aVal = a.uploadedAt?.toDate ? a.uploadedAt.toDate().getTime() : 0;
+        const bVal = b.uploadedAt?.toDate ? b.uploadedAt.toDate().getTime() : 0;
+        return bVal - aVal;
+      });
+      
+      const targetFile = files[0];
+      const isConfirmed = window.confirm(`'${targetFile.name}' 파일을 다운로드하시겠습니까?`);
+      if (!isConfirmed) return;
+      
+      const parts = targetFile.fileContent.split(',');
+      const byteString = atob(parts[1] || parts[0]);
+      const mimeString = parts[0].split(':')[1]?.split(';')[0] || targetFile.fileType;
+      
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      
+      const blob = new Blob([ab], { type: mimeString });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = targetFile.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('파일 다운로드 중 오류가 발생했습니다.');
+    }
+  };
+
   if (isLoading && tutors.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#FDFCF0]">
@@ -265,7 +313,7 @@ export default function App() {
                   const rangeLabel = `${format(start, 'MM.dd')}~${format(end, 'MM.dd')}`;
                   return (
                     <option key={week.offset} value={week.offset}>
-                      {week.label} ({rangeLabel})
+                      {rangeLabel}
                     </option>
                   );
                 })}
@@ -277,7 +325,7 @@ export default function App() {
           {/* Week Navigation Inquiry (Replaces Weekly print button) */}
           <section className="flex flex-col gap-2">
             <div className="flex flex-col gap-1.5 p-3.5 bg-[#F3E5F5]/30 rounded-2xl border border-[#F3E5F5]/50 shadow-xs">
-              <span className="text-[10px] font-black text-[#8E24AA] px-1 uppercase tracking-wider">주차 간편 조회</span>
+              <span className="text-[10px] font-black text-[#8E24AA] px-1 uppercase tracking-wider">시간표 간편 조회</span>
               <div className="grid grid-cols-3 gap-1">
                 <button
                   onClick={() => setSelectedWeekOffset(prev => prev - 1)}
@@ -330,14 +378,14 @@ export default function App() {
           </section>
         </div>
 
-        <footer className="pt-6 border-t border-[#E0E0E0]/50 text-[10px] text-[#9E9E9E] font-bold text-center flex flex-col items-center gap-1.5">
-          <p>Version 1.1.0 (2026)</p>
+        <footer className="pt-6 border-t border-[#E0E0E0]/50 text-[10px] text-[#9E9E9E] font-bold text-center flex flex-col items-center gap-1">
+          <p>Version 1.2.0 (2026)</p>
           <button 
-            onClick={() => setIsPrivacyOpen(true)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6A1B9A] border border-[#E1BEE7]/45 rounded-lg text-[9px] font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
-            title="개인정보 수집·이용 동의서 및 처리방침 문서 조회"
+            onClick={handleDownloadPrivacyPolicy}
+            className="hover:underline hover:text-[#7B1FA2] transition-colors cursor-pointer text-[10px] text-[#9E9E9E] font-bold"
+            title="개인정보처리방침 다운로드"
           >
-            <Shield size={10} className="shrink-0" /> 개인정보처리방침
+            개인정보처리방침
           </button>
           <p>© INBIGO. All Rights Reserved.</p>
         </footer>
