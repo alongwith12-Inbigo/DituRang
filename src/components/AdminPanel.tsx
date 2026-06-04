@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { X, Save, Lock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users } from 'lucide-react';
+import { X, Save, Lock, Unlock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users } from 'lucide-react';
 import { setDoc, doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { startOfWeek, startOfToday, addWeeks, addDays, format } from 'date-fns';
 import { db, auth } from '../lib/firebase';
@@ -11,14 +11,40 @@ interface AdminPanelProps {
   tutors: Tutor[];
   schoolEvents: SchoolEvent[];
   onClose: () => void;
+  closedMonths: string[];
 }
 
-export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanelProps) {
+export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths }: AdminPanelProps) {
   const [password, setPassword] = React.useState('');
   const [isAuthorized, setIsAuthorized] = React.useState(false);
   const [editTutors, setEditTutors] = React.useState<Tutor[]>([]);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'tutor' | 'calendar'>('tutor');
+  const [activeTab, setActiveTab] = React.useState<'tutor' | 'calendar' | 'closing'>('tutor');
+
+  // Monthly Closing State & Handlers
+  const manageableMonths = React.useMemo(() => {
+    const list = [];
+    const today = new Date();
+    // Generate precise monthly list from 8 months ago to 3 months into the future
+    for (let i = -8; i <= 3; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      list.push(format(d, 'yyyy-MM'));
+    }
+    return list;
+  }, []);
+
+  const toggleMonthClosing = async (monthStr: string) => {
+    const currentStatus = closedMonths.includes(monthStr);
+    try {
+      await setDoc(doc(db, 'closed_months', monthStr), {
+        closed: !currentStatus,
+        closedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err: any) {
+      console.error(err);
+      alert("마감 상태를 변경하는 중 오류가 발생했습니다.");
+    }
+  };
 
   // Academic Calendar State
   const [newEventDate, setNewEventDate] = React.useState(format(new Date(), 'yyyy-MM-dd'));
@@ -281,10 +307,10 @@ export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanel
             </div>
             <div className="flex flex-col">
               <h2 className="text-xl font-black text-[#455A64]">
-                {activeTab === 'tutor' ? '시간표 마스터 관리' : '학사일정 관리'}
+                {activeTab === 'tutor' ? '시간표 마스터 관리' : activeTab === 'calendar' ? '학사일정 관리' : '월 마감 관리'}
               </h2>
               <p className="text-[10px] font-bold text-[#B0BEC5] tracking-widest uppercase mt-0.5">
-                {activeTab === 'tutor' ? 'Tutor Assets & Period Overrides' : 'School Academic Calendar'}
+                {activeTab === 'tutor' ? 'Tutor Assets & Period Overrides' : activeTab === 'calendar' ? 'School Academic Calendar' : 'Monthly Payroll & System Locks'}
               </p>
             </div>
           </div>
@@ -308,6 +334,15 @@ export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanel
                 )}
               >
                 <Calendar size={14} /> 학사일정 관리
+              </button>
+              <button 
+                onClick={() => setActiveTab('closing')}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                  activeTab === 'closing' ? "bg-red-500 text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
+                )}
+              >
+                <Lock size={14} /> 월 마감 설정
               </button>
             </div>
           </div>
@@ -516,7 +551,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanel
               </section>
             )})}
             </div>
-          ) : (
+          ) : activeTab === 'calendar' ? (
             <div className="space-y-8 max-w-2xl mx-auto">
               <section className="p-8 bg-amber-50/30 rounded-[2.5rem] border border-amber-100/50 space-y-6">
                 <div className="flex items-center gap-3">
@@ -583,6 +618,63 @@ export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanel
                 </div>
               </section>
             </div>
+          ) : (
+            <div className="space-y-8 max-w-2xl mx-auto">
+              <section className="p-8 bg-red-50/30 rounded-[2.5rem] border border-red-100/50 space-y-4">
+                <div className="flex items-center gap-3">
+                  <Lock size={20} className="text-red-500" />
+                  <h3 className="text-lg font-black text-red-900">월 마감 통합 시스템</h3>
+                </div>
+                <p className="text-xs text-red-700/80 leading-relaxed">
+                  월 마감 처리를 진행한 월은 급여 정산이 완료된 상태로 보호됩니다. 마감된 기간에 대해서는 <strong>인출, 예약 및 변경 과정이 차단</strong>되며 신규 입력도 전면 비활성화됩니다. 필요 시 언제든지 자유롭게 마감을 해제하실 수 있습니다.
+                </p>
+              </section>
+
+              <section className="space-y-4">
+                <h3 className="text-xs font-black text-[#B0BEC5] uppercase tracking-widest pl-4">월별 마감 처리 / 해제</h3>
+                <div className="flex flex-col gap-3">
+                  {manageableMonths.map(month => {
+                    const isClosed = closedMonths.includes(month);
+                    const [yearStr, monthStr] = month.split('-');
+                    return (
+                      <div key={month} className={cn(
+                        "flex items-center justify-between p-5 bg-white rounded-2xl border transition-all",
+                        isClosed ? "border-red-200 bg-red-50/5" : "border-[#EEEEEE]"
+                      )}>
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "p-3 rounded-xl",
+                            isClosed ? "bg-red-50 text-red-500" : "bg-gray-50 text-gray-400"
+                          )}>
+                            {isClosed ? <Lock size={18} /> : <Unlock size={18} />}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-base text-[#455A64]">
+                              {yearStr}년 {monthStr}월 근무
+                            </span>
+                            <span className="text-[10px] font-semibold text-[#90A4AE] mt-0.5">
+                              {isClosed ? "🔒 마감 처리됨 - 수정 차단" : "🔓 수정 및 예약 상시 가능"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => toggleMonthClosing(month)}
+                          className={cn(
+                            "px-5 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 active:scale-95 shadow-xs",
+                            isClosed 
+                              ? "bg-red-100/60 hover:bg-red-100 border border-red-200 text-red-600" 
+                              : "bg-gray-50 hover:bg-gray-100 border border-gray-200 text-[#455A64]"
+                          )}
+                        >
+                          {isClosed ? "마감 해제하기" : "월 마감하기"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
           )}
         </div>
 
@@ -601,10 +693,15 @@ export default function AdminPanel({ tutors, schoolEvents, onClose }: AdminPanel
                 {isSaving ? "처리 중..." : <><Save size={18} /> 최종 설정 저장하기</>}
               </button>
             </>
-          ) : (
+          ) : activeTab === 'calendar' ? (
              <div className="flex items-center gap-2 text-[#B0BEC5]">
                <Info size={16} />
                <p className="text-[10px] font-bold italic tracking-tight">학사일정은 추가/삭제 즉시 서버에 반영됩니다.</p>
+             </div>
+          ) : (
+             <div className="flex items-center gap-2 text-[#F44336]">
+               <Info size={16} />
+               <p className="text-[10px] font-bold italic tracking-tight">마감 상태 변경은 실시간으로 모든 튜터 및 교직원의 화면에 즉시 통제 규칙으로 적용됩니다.</p>
              </div>
           )}
         </footer>

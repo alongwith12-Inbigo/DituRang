@@ -18,17 +18,23 @@ interface TimetableProps {
   reservations: Reservation[];
   schoolEvents: SchoolEvent[];
   weekRange: { date: string; label: string }[];
+  closedMonths?: string[];
   onSlotClick: (date: string, period: number) => void;
   onReservationClick: (reservation: Reservation) => void;
 }
 
-export default function Timetable({ tutor, reservations, schoolEvents, weekRange, onSlotClick, onReservationClick }: TimetableProps) {
+export default function Timetable({ tutor, reservations, schoolEvents, weekRange, closedMonths, onSlotClick, onReservationClick }: TimetableProps) {
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
   if (!tutor) return null;
 
   const getReservation = (date: string, period: number) => {
     return reservations.find(r => r.date === date && r.period === period && r.tutorId === tutor.id);
+  };
+
+  const isMonthClosed = (dateStr: string) => {
+    const monthStr = dateStr.substring(0, 7); // "YYYY-MM"
+    return closedMonths?.includes(monthStr) ?? false;
   };
 
   const getWeekStart = (date: string) => {
@@ -108,11 +114,18 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
                   const reservation = getReservation(day.date, period);
                   const mon = getWeekStart(day.date);
                   const active = tutor.weekOverrides?.[mon]?.[dIdx]?.includes(period) ?? tutor.workSchedule?.[dIdx]?.includes(period);
+                  const closed = isMonthClosed(day.date);
                   
                   return (
                     <td 
                       key={dIdx} 
                       onClick={(e) => {
+                        if (closed) {
+                          if (reservation) {
+                            onReservationClick(reservation);
+                          }
+                          return;
+                        }
                         if (reservation) {
                           onReservationClick(reservation);
                         } else if (active) {
@@ -122,7 +135,8 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
                       className={cn(
                         "p-0.5 lg:p-1 border-b border-r last:border-r-0 border-[#FDFBFF] relative group h-10 lg:h-14 min-h-[40px] lg:min-h-[56px] print:h-12 transition-all cursor-default",
                         !active && "bg-[#F9F8FD]/40 opacity-30 cursor-not-allowed",
-                        active && !reservation && (tutor.id === 'tutor1' ? "bg-[#FFE0E6] hover:bg-[#FFD1DA] cursor-pointer" : "bg-[#E3F2FF] hover:bg-[#D4E9FF] cursor-pointer"),
+                        active && !reservation && !closed && (tutor.id === 'tutor1' ? "bg-[#FFE0E6] hover:bg-[#FFD1DA] cursor-pointer" : "bg-[#E3F2FF] hover:bg-[#D4E9FF] cursor-pointer"),
+                        active && !reservation && closed && "bg-[#F5F5F5] opacity-50 cursor-not-allowed",
                         active && reservation && (tutor.id === 'tutor1' ? "bg-[#FFC1D1]" : "bg-[#B3E5FC]")
                       )}
                     >
@@ -148,18 +162,20 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
                             </span>
                           </div>
                           
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingId(reservation.id);
-                            }}
-                            className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-red-50 text-red-500 opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm z-10 print:hidden"
-                            title="예약 취소"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          {!closed && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingId(reservation.id);
+                              }}
+                              className="absolute bottom-1 right-1 w-6 h-6 rounded-md bg-red-50 text-red-500 opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm z-10 print:hidden"
+                              title="예약 취소"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </motion.div>
-                      ) : active ? (
+                      ) : (active && !closed) ? (
                         <div className="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
                            <div className={cn(
                              "w-6 h-6 rounded-full flex items-center justify-center shadow-xs",

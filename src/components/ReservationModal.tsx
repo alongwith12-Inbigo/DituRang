@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { X, Check, Star, AlertCircle, Calendar } from 'lucide-react';
+import { X, Check, Star, AlertCircle, Calendar, Lock } from 'lucide-react';
 import { addDoc, collection, serverTimestamp, doc, setDoc, query, where, getDocs } from 'firebase/firestore';
 import { addWeeks, format, addDays } from 'date-fns';
 import { db } from '../lib/firebase';
@@ -14,9 +14,10 @@ interface ReservationModalProps {
   onSuccess: () => void;
   reservations: Reservation[];
   editReservation?: Reservation;
+  closedMonths?: string[];
 }
 
-export default function ReservationModal({ tutor, slot, onClose, onSuccess, reservations, editReservation }: ReservationModalProps) {
+export default function ReservationModal({ tutor, slot, onClose, onSuccess, reservations, editReservation, closedMonths }: ReservationModalProps) {
   const [teacherName, setTeacherName] = React.useState(editReservation?.teacherName || '');
   const [category, setCategory] = React.useState(editReservation?.category || '수업 직접 보조');
   const [classInfo, setClassInfo] = React.useState(editReservation?.classInfo || '');
@@ -27,6 +28,13 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
   const [isRecurring, setIsRecurring] = React.useState(false);
   const [weeksToRepeat, setWeeksToRepeat] = React.useState(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const isClosed = React.useMemo(() => {
+    const targetDate = editReservation?.date || slot.date;
+    if (!targetDate) return false;
+    const monthStr = targetDate.substring(0, 7); // "YYYY-MM"
+    return closedMonths?.includes(monthStr) ?? false;
+  }, [slot.date, editReservation?.date, closedMonths]);
 
   const categories = [
     '수업 직접 보조',
@@ -190,6 +198,16 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
         </header>
 
         <form onSubmit={handleSubmit} className="p-8 flex flex-col gap-5 overflow-y-auto">
+          {isClosed && (
+            <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-1">
+              <Lock size={18} className="text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-black text-amber-800">해당 월은 마감되었습니다</span>
+                <span className="text-[10px] text-amber-700/80 leading-normal">급여 마감이 완료되어 새로운 예약을 신청하거나 기존 내용을 수정할 수 없습니다. (조회만 가능)</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
             <label className="text-[12px] font-black text-[#7B1FA2] uppercase tracking-wider ml-1">신청 교사명</label>
             <input 
@@ -197,7 +215,8 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
               value={teacherName}
               onChange={e => setTeacherName(e.target.value)}
               placeholder="예: 홍길동"
-              className="w-full px-4 py-3 bg-[#FCFBFF] rounded-xl border border-[#F3E5F5] focus:ring-4 focus:ring-[#F3E5F5] outline-none transition-all text-[#4A148C] font-black placeholder-[#D1C4E9]"
+              disabled={isClosed}
+              className="w-full px-4 py-3 bg-[#FCFBFF] rounded-xl border border-[#F3E5F5] focus:ring-4 focus:ring-[#F3E5F5] outline-none transition-all text-[#4A148C] font-black placeholder-[#D1C4E9] disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
             />
           </div>
 
@@ -206,7 +225,8 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
             <select 
               value={category}
               onChange={e => setCategory(e.target.value)}
-              className="w-full px-4 py-3 bg-[#FCFBFF] rounded-xl border border-[#F3E5F5] focus:ring-4 focus:ring-[#F3E5F5] outline-none transition-all text-[#4A148C] font-black"
+              disabled={isClosed}
+              className="w-full px-4 py-3 bg-[#FCFBFF] rounded-xl border border-[#F3E5F5] focus:ring-4 focus:ring-[#F3E5F5] outline-none transition-all text-[#4A148C] font-black disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
             >
               {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
             </select>
@@ -221,7 +241,8 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
                      required
                      value={classInfo}
                      onChange={e => setClassInfo(e.target.value)}
-                     className="px-3 py-2 bg-white rounded-lg border border-purple-200 text-sm font-bold text-[#4A148C] outline-none focus:border-purple-400"
+                     disabled={isClosed}
+                     className="px-3 py-2 bg-white rounded-lg border border-purple-200 text-sm font-bold text-[#4A148C] outline-none focus:border-purple-400 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
                    />
                  </div>
                  <div className="flex flex-col gap-1.5">
@@ -230,7 +251,8 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
                      required
                      value={subjectInfo}
                      onChange={e => setSubjectInfo(e.target.value)}
-                     className="px-3 py-2 bg-white rounded-lg border border-purple-200 text-sm font-bold text-[#4A148C] outline-none focus:border-purple-400"
+                     disabled={isClosed}
+                     className="px-3 py-2 bg-white rounded-lg border border-purple-200 text-sm font-bold text-[#4A148C] outline-none focus:border-purple-400 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
                    />
                  </div>
                </div>
@@ -240,7 +262,8 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
                    value={locationInfo}
                    onChange={e => setLocationInfo(e.target.value)}
                    placeholder="예: 멀티미디어실"
-                   className="px-3 py-2 bg-white rounded-lg border border-purple-200 text-sm font-bold text-[#4A148C] outline-none focus:border-purple-400"
+                   disabled={isClosed}
+                   className="px-3 py-2 bg-white rounded-lg border border-purple-200 text-sm font-bold text-[#4A148C] outline-none focus:border-purple-400 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
                  />
                </div>
                <div className="flex flex-col gap-1.5">
@@ -249,7 +272,8 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
                    value={otherDetail}
                    onChange={e => setOtherDetail(e.target.value)}
                    placeholder="구체적인 요청 사항이 있다면 입력해주세요."
-                   className="px-3 py-2 bg-white rounded-lg border border-purple-200 text-sm font-bold text-[#4A148C] outline-none min-h-[60px] resize-none focus:border-purple-400"
+                   disabled={isClosed}
+                   className="px-3 py-2 bg-white rounded-lg border border-purple-200 text-sm font-bold text-[#4A148C] outline-none min-h-[60px] resize-none focus:border-purple-400 disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
                  />
                </div>
             </div>
@@ -263,7 +287,8 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
                 value={otherDetail}
                 onChange={e => setOtherDetail(e.target.value)}
                 placeholder="지원이 필요한 내용을 입력해주세요."
-                className="w-full px-4 py-3 bg-[#FCFBFF] rounded-xl border border-[#F3E5F5] focus:ring-4 focus:ring-[#F3E5F5] outline-none transition-all text-[#4A148C] font-black placeholder-[#D1C4E9] min-h-[80px] resize-none"
+                disabled={isClosed}
+                className="w-full px-4 py-3 bg-[#FCFBFF] rounded-xl border border-[#F3E5F5] focus:ring-4 focus:ring-[#F3E5F5] outline-none transition-all text-[#4A148C] font-black placeholder-[#D1C4E9] min-h-[80px] resize-none disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
               />
             </div>
           )}
@@ -278,7 +303,7 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
                     <button
                       key={p}
                       type="button"
-                      disabled={!active}
+                      disabled={!active || isClosed}
                       onClick={() => togglePeriod(p)}
                       className={cn(
                         "w-10 h-10 rounded-xl text-xs font-black border transition-all flex items-center justify-center",
@@ -297,7 +322,7 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
             </div>
           )}
 
-          {!editReservation && (
+          {!editReservation && !isClosed && (
             <div className="flex flex-col gap-3 p-4 bg-blue-50/20 rounded-2xl border border-blue-100/30">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
@@ -336,15 +361,25 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
             </div>
           )}
 
-          <button 
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-4 bg-[#673AB7] hover:bg-[#5E35B1] disabled:bg-[#E1E1E1] text-white rounded-2xl font-black shadow-xl shadow-purple-100 transition-all flex items-center justify-center gap-2 mt-2"
-          >
-            {isSubmitting ? "처리 중..." : (
-              editReservation ? <>수정 완료하기 <Check size={20} /></> : <>신청 완료하기 <Check size={20} /></>
-            )}
-          </button>
+          {isClosed ? (
+            <button 
+              type="button"
+              onClick={onClose}
+              className="w-full py-4 bg-gray-500 hover:bg-gray-600 text-white rounded-2xl font-black shadow-xl shadow-slate-100 transition-all flex items-center justify-center gap-2 mt-2"
+            >
+              확인 완료 (마감됨) <Check size={20} />
+            </button>
+          ) : (
+            <button 
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-4 bg-[#673AB7] hover:bg-[#5E35B1] disabled:bg-[#E1E1E1] text-white rounded-2xl font-black shadow-xl shadow-purple-100 transition-all flex items-center justify-center gap-2 mt-2"
+            >
+              {isSubmitting ? "처리 중..." : (
+                editReservation ? <>수정 완료하기 <Check size={20} /></> : <>신청 완료하기 <Check size={20} /></>
+              )}
+            </button>
+          )}
         </form>
       </motion.div>
     </div>

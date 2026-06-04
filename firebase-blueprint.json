@@ -41,6 +41,16 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["date", "title"]
+    },
+    "closed_month": {
+      "title": "Closed Month",
+      "description": "Indicates whether a month is closed for editing/updates",
+      "type": "object",
+      "properties": {
+        "closed": { "type": "boolean" },
+        "closedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["closed"]
     }
   },
   "firestore": {
@@ -55,6 +65,10 @@
     "school_events": {
       "schema": "school_event",
       "description": "Collection of academic calendar events"
+    },
+    "closed_months": {
+      "schema": "closed_month",
+      "description": "Collection of closed months"
     }
   }
 }

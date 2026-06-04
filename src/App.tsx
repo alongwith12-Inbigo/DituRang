@@ -69,6 +69,7 @@ export default function App() {
   const [editingReservation, setEditingReservation] = React.useState<Reservation | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [closedMonths, setClosedMonths] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   const printRef = React.useRef<HTMLDivElement>(null);
@@ -116,10 +117,20 @@ export default function App() {
       setSchoolEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SchoolEvent)));
     });
 
+    // Sub for Closed Months
+    const closedMonthsQuery = collection(db, 'closed_months');
+    const unsubscribeClosedMonths = onSnapshot(closedMonthsQuery, (snapshot) => {
+      const closed = snapshot.docs
+        .filter(doc => doc.data().closed)
+        .map(doc => doc.id);
+      setClosedMonths(closed);
+    });
+
     return () => {
       unsubscribeTutors();
       unsubscribeReservations();
       unsubscribeEvents();
+      unsubscribeClosedMonths();
     };
   }, []);
 
@@ -131,14 +142,21 @@ export default function App() {
     };
   });
 
-  const weeks = [
-    { label: '이번 주', offset: 0 },
-    { label: '다음 주', offset: 1 },
-    { label: '다다음 주', offset: 2 },
-    { label: '3주 뒤', offset: 3 },
-    { label: '4주 뒤', offset: 4 },
-    { label: '5주 뒤', offset: 5 },
-  ];
+  const dynamicWeeks = React.useMemo(() => {
+    const start = Math.min(selectedWeekOffset - 4, -4);
+    const end = Math.max(selectedWeekOffset + 6, 6);
+    const result = [];
+    for (let offset = start; offset <= end; offset++) {
+      let label = '';
+      if (offset === 0) label = '이번 주';
+      else if (offset === 1) label = '다음 주';
+      else if (offset === -1) label = '지난 주';
+      else if (offset > 1) label = `${offset}주 뒤`;
+      else label = `${Math.abs(offset)}주 전`;
+      result.push({ label, offset });
+    }
+    return result;
+  }, [selectedWeekOffset]);
 
   const handleRefresh = () => {
     window.location.reload();
@@ -230,7 +248,7 @@ export default function App() {
           {/* Week Selection */}
           <section className="flex flex-col gap-3">
             <h3 className="text-xs font-black text-[#BA68C8] uppercase tracking-widest flex items-center gap-2">
-              <Calendar size={14} /> 예약 주차
+              <Calendar size={14} /> 조회 주차 선택
             </h3>
             <div className="relative group">
               <select
@@ -238,13 +256,13 @@ export default function App() {
                 onChange={(e) => setSelectedWeekOffset(Number(e.target.value))}
                 className="w-full pl-4 pr-10 py-3 bg-white border border-[#EDE7F6] rounded-2xl text-xs font-bold text-[#5E35B1] appearance-none focus:outline-none focus:ring-4 focus:ring-[#F3E5F5] transition-all cursor-pointer shadow-sm"
               >
-                {weeks.map((week) => {
+                {dynamicWeeks.map((week) => {
                   const start = startOfWeek(addWeeks(startOfToday(), week.offset), { weekStartsOn: 1 });
                   const end = addDays(start, 4);
                   const rangeLabel = `${format(start, 'MM.dd')}~${format(end, 'MM.dd')}`;
                   return (
                     <option key={week.offset} value={week.offset}>
-                      {format(start, 'M월 ')} {rangeLabel}
+                      {week.label} ({rangeLabel})
                     </option>
                   );
                 })}
@@ -253,19 +271,46 @@ export default function App() {
             </div>
           </section>
 
+          {/* Week Navigation Inquiry (Replaces Weekly print button) */}
+          <section className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5 p-3.5 bg-[#F3E5F5]/30 rounded-2xl border border-[#F3E5F5]/50 shadow-xs">
+              <span className="text-[10px] font-black text-[#8E24AA] px-1 uppercase tracking-wider">주차 간편 조회</span>
+              <div className="grid grid-cols-3 gap-1">
+                <button
+                  onClick={() => setSelectedWeekOffset(prev => prev - 1)}
+                  className="flex flex-col items-center justify-center py-2 bg-white hover:bg-[#F3E5F5]/40 text-[#6A1B9A] border border-[#E1BEE7] rounded-xl transition-all shadow-sm active:scale-95 text-[11px] font-bold gap-1"
+                  title="이전 주로 이동"
+                >
+                  <ChevronLeft size={14} />
+                  <span>이전 주</span>
+                </button>
+                <button
+                  onClick={() => setSelectedWeekOffset(0)}
+                  className="flex flex-col items-center justify-center py-2 bg-[#673AB7] hover:bg-[#5E35B1] text-white rounded-xl transition-all shadow-sm active:scale-95 text-[11px] font-black gap-1"
+                  title="이번 주로 이동"
+                >
+                  <RefreshCw size={12} />
+                  <span>이번 주</span>
+                </button>
+                <button
+                  onClick={() => setSelectedWeekOffset(prev => prev + 1)}
+                  className="flex flex-col items-center justify-center py-2 bg-white hover:bg-[#F3E5F5]/40 text-[#6A1B9A] border border-[#E1BEE7] rounded-xl transition-all shadow-sm active:scale-95 text-[11px] font-bold gap-1"
+                  title="다음 주로 이동"
+                >
+                  <ChevronRight size={14} />
+                  <span>다음 주</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
           {/* Actions */}
           <section className="mt-auto flex flex-col gap-2 pt-4">
             <button 
-              onClick={handlePrint}
+              onClick={() => setIsWorkReportOpen(true)}
               className="flex items-center justify-center gap-2 px-4 py-3 bg-[#6A1B9A] hover:bg-[#7B1FA2] text-white rounded-2xl text-sm font-black shadow-lg shadow-purple-200 transition-all active:scale-95 group"
             >
-              <Printer size={18} className="group-hover:scale-110 transition-transform" /> 주간 시간표 인쇄
-            </button>
-            <button 
-              onClick={() => setIsWorkReportOpen(true)}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-[#F3E5F5] text-[#6A1B9A] rounded-2xl text-sm font-black border border-[#E1BEE7] shadow-sm transition-all active:scale-95"
-            >
-              <Calendar size={18} /> 월간 근무확인서
+              <Calendar size={18} className="group-hover:scale-110 transition-transform" /> 월간 근무확인서
             </button>
             <button 
               onClick={() => setIsAdminOpen(true)}
@@ -283,7 +328,7 @@ export default function App() {
         </div>
 
         <footer className="pt-6 border-t border-[#E0E0E0]/50 text-[10px] text-[#9E9E9E] font-bold text-center">
-          <p className="mb-1">Version 1.0.1 (2026)</p>
+          <p className="mb-1">Version 1.1.0 (2026)</p>
           <p>© INBIGO. All Rights Reserved.</p>
         </footer>
       </aside>
@@ -351,6 +396,7 @@ export default function App() {
                 reservations={reservations} 
                 schoolEvents={schoolEvents}
                 weekRange={weekRange}
+                closedMonths={closedMonths}
                 onSlotClick={(date, period) => {
                   setSelectedSlot({ date, period });
                   setIsBookingOpen(true);
@@ -379,6 +425,7 @@ export default function App() {
             tutor={selectedTutor}
             slot={selectedSlot || { date: editingReservation?.date || '', period: editingReservation?.period || 0 }}
             editReservation={editingReservation || undefined}
+            closedMonths={closedMonths}
             onClose={() => {
               setIsBookingOpen(false);
               setSelectedSlot(null);
@@ -397,6 +444,7 @@ export default function App() {
           <AdminPanel 
             tutors={tutors}
             schoolEvents={schoolEvents}
+            closedMonths={closedMonths}
             onClose={() => setIsAdminOpen(false)}
           />
         )}
