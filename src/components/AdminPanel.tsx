@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { X, Save, Lock, Unlock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users } from 'lucide-react';
-import { setDoc, doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { X, Save, Lock, Unlock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users, Upload, Download, FileText, File, ShieldAlert, AlertCircle, Shield } from 'lucide-react';
+import { setDoc, doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { startOfWeek, startOfToday, addWeeks, addDays, format } from 'date-fns';
 import { db, auth } from '../lib/firebase';
 import { Tutor, DAYS, SchoolEvent } from '../types';
@@ -19,7 +19,143 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
   const [isAuthorized, setIsAuthorized] = React.useState(false);
   const [editTutors, setEditTutors] = React.useState<Tutor[]>([]);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'tutor' | 'calendar' | 'closing'>('tutor');
+  const [activeTab, setActiveTab] = React.useState<'tutor' | 'calendar' | 'closing' | 'privacy'>('tutor');
+
+  // Privacy Documents Management States
+  const [privacyFiles, setPrivacyFiles] = React.useState<any[]>([]);
+  const [isDraggingFile, setIsDraggingFile] = React.useState(false);
+  const [isUploadingFile, setIsUploadingFile] = React.useState(false);
+  const [privacyError, setPrivacyError] = React.useState<string | null>(null);
+  const [privacyUploadSuccess, setPrivacyUploadSuccess] = React.useState(false);
+  const privacyFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (!isAuthorized) return;
+    const q = query(collection(db, 'privacy_files'), orderBy('uploadedAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loaded: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        loaded.push({
+          id: doc.id,
+          name: data.name || '무제 파일',
+          fileSize: data.fileSize || 0,
+          fileType: data.fileType || '',
+          fileContent: data.fileContent || '',
+          uploadedAt: data.uploadedAt
+        });
+      });
+      setPrivacyFiles(loaded);
+    }, (err) => {
+      console.error(err);
+      setPrivacyError('개인정보파일 목록을 불러오는 중 오류가 발생했습니다.');
+    });
+    return () => unsubscribe();
+  }, [isAuthorized]);
+
+  const processPrivacyFile = async (file: File) => {
+    setPrivacyError(null);
+    setPrivacyUploadSuccess(false);
+
+    const LIMIT = 800 * 1024; 
+    if (file.size > LIMIT) {
+      setPrivacyError('클라우드 저장소 제한으로 인해 800KB 이하의 파일만 업로드할 수 있습니다.');
+      return;
+    }
+
+    setIsUploadingFile(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const base64Content = event.target?.result as string;
+        if (!base64Content) {
+          throw new Error('파일을 읽을 수 없습니다.');
+        }
+
+        await addDoc(collection(db, 'privacy_files'), {
+          name: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          fileContent: base64Content,
+          uploadedAt: serverTimestamp()
+        });
+
+        setPrivacyUploadSuccess(true);
+        setTimeout(() => setPrivacyUploadSuccess(false), 3000);
+      } catch (err: any) {
+        console.error(err);
+        setPrivacyError('파일 업로드 중 오류가 발생했습니다: ' + (err.message || '알 수 없는 오류'));
+      } finally {
+        setIsUploadingFile(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setPrivacyError('파일을 읽는 도중 오류가 발생했습니다.');
+      setIsUploadingFile(false);
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handlePrivacyDownload = (file: any) => {
+    try {
+      const parts = file.fileContent.split(',');
+      const byteString = atob(parts[1] || parts[0]);
+      const mimeString = parts[0].split(':')[1]?.split(';')[0] || file.fileType;
+      
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+      }
+      
+      const blob = new Blob([ab], { type: mimeString });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('파일을 다운로드하는 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handlePrivacyDelete = async (id: string) => {
+    if (!window.confirm('정말 이 개인정보파일을 삭제하시겠습니까?')) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'privacy_files', id));
+    } catch (err: any) {
+      console.error(err);
+      setPrivacyError('파일 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const formatFileDate = (timestamp: any) => {
+    if (!timestamp) return '-';
+    const d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return d.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   // Monthly Closing State & Handlers
   const manageableMonths = React.useMemo(() => {
@@ -307,10 +443,10 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
             </div>
             <div className="flex flex-col">
               <h2 className="text-xl font-black text-[#455A64]">
-                {activeTab === 'tutor' ? '시간표 마스터 관리' : activeTab === 'calendar' ? '학사일정 관리' : '월 마감 관리'}
+                {activeTab === 'tutor' ? '시간표 마스터 관리' : activeTab === 'calendar' ? '학사일정 관리' : activeTab === 'closing' ? '월 마감 관리' : '개인정보처리방침 관리'}
               </h2>
               <p className="text-[10px] font-bold text-[#B0BEC5] tracking-widest uppercase mt-0.5">
-                {activeTab === 'tutor' ? 'Tutor Assets & Period Overrides' : activeTab === 'calendar' ? 'School Academic Calendar' : 'Monthly Payroll & System Locks'}
+                {activeTab === 'tutor' ? 'Tutor Assets & Period Overrides' : activeTab === 'calendar' ? 'School Academic Calendar' : activeTab === 'closing' ? 'Monthly Payroll & System Locks' : 'Privacy Agreements & Secure Files'}
               </p>
             </div>
           </div>
@@ -343,6 +479,15 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                 )}
               >
                 <Lock size={14} /> 월 마감 설정
+              </button>
+              <button 
+                onClick={() => setActiveTab('privacy')}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                  activeTab === 'privacy' ? "bg-purple-600 text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
+                )}
+              >
+                <Shield size={14} /> 개인정보파일 관리
               </button>
             </div>
           </div>
@@ -618,7 +763,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                 </div>
               </section>
             </div>
-          ) : (
+          ) : activeTab === 'closing' ? (
             <div className="space-y-8 max-w-2xl mx-auto">
               <section className="p-8 bg-red-50/30 rounded-[2.5rem] border border-red-100/50 space-y-4">
                 <div className="flex items-center gap-3">
@@ -675,6 +820,137 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                 </div>
               </section>
             </div>
+          ) : (
+            <div className="space-y-8 max-w-2xl mx-auto">
+              <section className="p-8 bg-purple-50/30 rounded-[2.5rem] border border-purple-100/50 space-y-4 animate-in fade-in">
+                <div className="flex items-center gap-3">
+                  <Shield size={20} className="text-purple-600" />
+                  <h3 className="text-lg font-black text-purple-900">개인정보처리방침 및 서류 관리</h3>
+                </div>
+                <p className="text-xs text-purple-700/80 leading-relaxed">
+                  이곳에서는 학교의 <strong>개인정보처리방침, 수집·이용 동의서, 규정 문서</strong> 등을 등록하고 관리할 수 있습니다. 등록된 파일은 모든 사용자가 메인 화면 하단의 '개인정보처리방침' 링크를 통해 조회하고 안전하게 다운로드할 수 있게 됩니다.
+                </p>
+              </section>
+
+              {/* Upload Drag & Drop Area */}
+              <div 
+                onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
+                onDragLeave={() => setIsDraggingFile(false)}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  setIsDraggingFile(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    await processPrivacyFile(e.dataTransfer.files[0]);
+                  }
+                }}
+                onClick={() => privacyFileInputRef.current?.click()}
+                className={cn(
+                  "border-2 border-dashed rounded-[1.8rem] p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all text-center relative overflow-hidden",
+                  isDraggingFile 
+                    ? "border-purple-500 bg-purple-50/50 scale-[0.99]" 
+                    : "border-purple-200 hover:border-purple-400 bg-purple-50/10 hover:bg-purple-50/20"
+                )}
+              >
+                <input 
+                  type="file" 
+                  ref={privacyFileInputRef}
+                  onChange={async (e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      await processPrivacyFile(e.target.files[0]);
+                    }
+                  }}
+                  className="hidden"
+                />
+
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center transition-all bg-purple-100/80 text-purple-600",
+                  isDraggingFile && "scale-110 bg-purple-500 text-white"
+                )}>
+                  <Upload size={22} className={cn(isUploadingFile && "animate-bounce")} />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold text-sm text-slate-700">
+                    {isDraggingFile ? "여기에 파일을 놓아주세요" : "새로운 방침 및 동의서 업로드"}
+                  </span>
+                  <p className="text-xs text-slate-400 leading-normal max-w-sm mx-auto">
+                    이 영역을 클릭하거나 파일을 드래그하여 등록하세요.<br />
+                    <span className="text-purple-600 font-semibold">(한도 800KB 이하 / HWP, PDF, PNG, Excel 등 가능)</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Success / Error alerts */}
+              {privacyError && (
+                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3">
+                  <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-800 font-medium leading-relaxed">{privacyError}</p>
+                </div>
+              )}
+
+              {privacyUploadSuccess && (
+                <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-800">
+                  <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                  <span className="text-xs font-bold">개인정보파일이 성공적으로 등록되었습니다!</span>
+                </div>
+              )}
+
+              {/* Files list */}
+              <section className="space-y-4">
+                <h3 className="text-xs font-black text-[#B0BEC5] uppercase tracking-widest pl-4">등록된 보안 문서 ({privacyFiles.length}개)</h3>
+                <div className="flex flex-col gap-3">
+                  {privacyFiles.length === 0 ? (
+                    <div className="border border-dashed border-purple-100 rounded-3xl flex flex-col items-center justify-center p-12 text-center text-[#B0BEC5] gap-2 bg-slate-50/30">
+                      <ShieldAlert size={26} className="text-slate-300" />
+                      <span className="text-xs font-bold text-slate-400">보관된 개인정보파일이 없습니다</span>
+                      <p className="text-[10px] text-slate-400/80">안전한 데이터 처리를 위해 관련 서류를 다운로드 가능하도록 등록해 주세요.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
+                      {privacyFiles.map((file) => (
+                        <div 
+                          key={file.id} 
+                          className="flex items-center justify-between p-4 bg-white hover:bg-purple-50/5 border border-slate-100 hover:border-purple-100 rounded-2xl transition-all shadow-xs"
+                        >
+                          <div className="flex items-center gap-3 overflow-hidden mr-4">
+                            <div className="p-2.5 rounded-xl bg-purple-50 text-purple-500 shrink-0">
+                              <FileText size={18} />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-xs text-slate-700 truncate" title={file.name}>
+                                {file.name}
+                              </span>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold mt-0.5">
+                                <span>{formatFileSize(file.fileSize)}</span>
+                                <span className="text-slate-250">•</span>
+                                <span>{formatFileDate(file.uploadedAt)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => handlePrivacyDownload(file)}
+                              className="p-2 hover:bg-purple-100 text-purple-600 rounded-xl transition-all active:scale-95 animate-in"
+                              title="다운로드"
+                            >
+                              <Download size={14} />
+                            </button>
+                            <button
+                              onClick={() => handlePrivacyDelete(file.id)}
+                              className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-all active:scale-95"
+                              title="삭제"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
           )}
         </div>
 
@@ -698,10 +974,15 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                <Info size={16} />
                <p className="text-[10px] font-bold italic tracking-tight">학사일정은 추가/삭제 즉시 서버에 반영됩니다.</p>
              </div>
-          ) : (
+          ) : activeTab === 'closing' ? (
              <div className="flex items-center gap-2 text-[#F44336]">
                <Info size={16} />
                <p className="text-[10px] font-bold italic tracking-tight">마감 상태 변경은 실시간으로 모든 튜터 및 교직원의 화면에 즉시 통제 규칙으로 적용됩니다.</p>
+             </div>
+          ) : (
+             <div className="flex items-center gap-2 text-purple-600">
+               <ShieldAlert size={16} />
+               <p className="text-[10px] font-bold italic tracking-tight">여기에 수집 동의서 및 처리방침 서류를 등록해놓으면 사용자들이 하단 메뉴를 통해 받아볼 수 있습니다.</p>
              </div>
           )}
         </footer>

@@ -7,6 +7,7 @@ import { cn } from '../lib/utils';
 
 interface PrivacyFilesModalProps {
   onClose: () => void;
+  readOnly?: boolean;
 }
 
 interface PrivacyFileDoc {
@@ -18,7 +19,7 @@ interface PrivacyFileDoc {
   uploadedAt: any;
 }
 
-export default function PrivacyFilesModal({ onClose }: PrivacyFilesModalProps) {
+export default function PrivacyFilesModal({ onClose, readOnly = false }: PrivacyFilesModalProps) {
   const [files, setFiles] = React.useState<PrivacyFileDoc[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
   const [isUploading, setIsUploading] = React.useState(false);
@@ -196,9 +197,11 @@ export default function PrivacyFilesModal({ onClose }: PrivacyFilesModalProps) {
               <File size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-800">개인정보파일 통합 관리</h2>
+              <h2 className="text-xl font-black text-slate-800">
+                {readOnly ? "개인정보처리방침 및 파일" : "개인정보파일 통합 관리"}
+              </h2>
               <p className="text-[10px] font-bold text-purple-400 tracking-wider uppercase mt-0.5">
-                Privacy Agreements & Tutor Documents
+                {readOnly ? "Privacy Policy & Disclosures" : "Privacy Agreements & Tutor Documents"}
               </p>
             </div>
           </div>
@@ -213,46 +216,48 @@ export default function PrivacyFilesModal({ onClose }: PrivacyFilesModalProps) {
         {/* Content area */}
         <div className="p-8 flex flex-col gap-6 overflow-y-auto flex-1">
           {/* Upload Area */}
-          <div 
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={cn(
-              "border-2 border-dashed rounded-[1.8rem] p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all text-center relative overflow-hidden",
-              isDragging 
-                ? "border-purple-500 bg-purple-50/50 scale-[0.99]" 
-                : "border-purple-200 hover:border-purple-400 bg-purple-50/10 hover:bg-purple-50/20"
-            )}
-          >
-            <input 
-              type="file" 
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-            />
+          {!readOnly && (
+            <div 
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                "border-2 border-dashed rounded-[1.8rem] p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all text-center relative overflow-hidden",
+                isDragging 
+                  ? "border-purple-500 bg-purple-50/50 scale-[0.99]" 
+                  : "border-purple-200 hover:border-purple-400 bg-purple-50/10 hover:bg-purple-50/20"
+              )}
+            >
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
 
-            <div className={cn(
-              "w-12 h-12 rounded-full flex items-center justify-center transition-all bg-purple-100/80 text-purple-600",
-              isDragging && "scale-110 bg-purple-500 text-white"
-            )}>
-              <Upload size={22} className={cn(isUploading && "animate-bounce")} />
-            </div>
+              <div className={cn(
+                "w-12 h-12 rounded-full flex items-center justify-center transition-all bg-purple-100/80 text-purple-600",
+                isDragging && "scale-110 bg-purple-500 text-white"
+              )}>
+                <Upload size={22} className={cn(isUploading && "animate-bounce")} />
+              </div>
 
-            <div className="flex flex-col gap-1">
-              <span className="font-bold text-sm text-slate-700">
-                {isDragging ? "여기에 파일을 놓아주세요" : "개인정보 동의서 및 파일 업로드"}
-              </span>
-              <p className="text-xs text-slate-400 leading-normal max-w-sm mx-auto">
-                이 마당을 클릭하거나 파일을 끌어다 놓으세요.<br />
-                <span className="text-purple-600 font-semibold">(한도 800KB 이하 / HWP, PDF, PNG, Excel 등 가능)</span>
-              </p>
+              <div className="flex flex-col gap-1">
+                <span className="font-bold text-sm text-slate-700">
+                  {isDragging ? "여기에 파일을 놓아주세요" : "개인정보 동의서 및 파일 업로드"}
+                </span>
+                <p className="text-xs text-slate-400 leading-normal max-w-sm mx-auto">
+                  이 마당을 클릭하거나 파일을 끌어다 놓으세요.<br />
+                  <span className="text-purple-600 font-semibold">(한도 800KB 이하 / HWP, PDF, PNG, Excel 등 가능)</span>
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Feedback Messages */}
           <AnimatePresence mode="popLayout">
-            {error && (
+            {!readOnly && error && (
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -264,7 +269,7 @@ export default function PrivacyFilesModal({ onClose }: PrivacyFilesModalProps) {
               </motion.div>
             )}
 
-            {uploadSuccess && (
+            {!readOnly && uploadSuccess && (
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -280,14 +285,14 @@ export default function PrivacyFilesModal({ onClose }: PrivacyFilesModalProps) {
           {/* File Lists */}
           <section className="flex flex-col gap-3 min-h-[150px]">
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">
-              업로드된 보안 파일 ({files.length}개)
+              {readOnly ? "등록된 개인정보 방침서 및 동의서" : "업로드된 보안 파일"} ({files.length}개)
             </h3>
 
             {files.length === 0 ? (
               <div className="flex-1 border border-dashed border-purple-100 rounded-3xl flex flex-col items-center justify-center p-8 text-center text-[#B0BEC5] gap-2 bg-slate-50/30">
                 <ShieldAlert size={26} className="text-slate-300" />
-                <span className="text-xs font-bold text-slate-400">보관된 개인정보파일이 없습니다</span>
-                <p className="text-[10px] text-slate-400/80">안전한 데이터 처리를 위해 관련 서류를 보호 업로드해 주세요.</p>
+                <span className="text-xs font-bold text-slate-400">등록된 개인정보처리방침 문서가 없습니다</span>
+                <p className="text-[10px] text-slate-400/80">{readOnly ? "관리자가 문서를 등록하는 중입니다." : "안전한 데이터 처리를 위해 관련 서류를 보호 업로드해 주세요."}</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1">
@@ -315,18 +320,20 @@ export default function PrivacyFilesModal({ onClose }: PrivacyFilesModalProps) {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => handleDownload(file)}
-                        className="p-2 hover:bg-purple-100/60 text-purple-600 rounded-xl transition-all active:scale-95"
+                        className="p-2.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-xl transition-all active:scale-95 flex items-center gap-1.5 text-[10px] font-bold"
                         title="파일 다운로드"
                       >
-                        <Download size={14} />
+                        <Download size={12} /> 다운로드
                       </button>
-                      <button
-                        onClick={() => handleDelete(file.id)}
-                        className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-all active:scale-95"
-                        title="파일 삭제"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {!readOnly && (
+                        <button
+                          onClick={() => handleDelete(file.id)}
+                          className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-all active:scale-95"
+                          title="파일 삭제"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -338,7 +345,7 @@ export default function PrivacyFilesModal({ onClose }: PrivacyFilesModalProps) {
         <footer className="p-8 border-t border-purple-50 flex items-center justify-between bg-slate-50/40 text-[10px] text-slate-400 font-semibold shrink-0">
           <div className="flex items-center gap-1.5 leading-normal">
             <ShieldAlert size={12} className="text-purple-400 shrink-0" />
-            <span>이 파일들은 SSL 보안 터널을 통해 직접 암호화 전송되며 관리 목적으로만 보관됩니다.</span>
+            <span>이 파일들은 안전한 클라우드에서 직접 암호화 전송되며 관리 목적으로 보관됩니다.</span>
           </div>
         </footer>
       </motion.div>

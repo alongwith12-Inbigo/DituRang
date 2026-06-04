@@ -335,9 +335,9 @@ export default function App() {
           <button 
             onClick={() => setIsPrivacyOpen(true)}
             className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6A1B9A] border border-[#E1BEE7]/45 rounded-lg text-[9px] font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
-            title="개인정보 수집 이용 동의서 및 파일 안전 관리"
+            title="개인정보 수집·이용 동의서 및 처리방침 문서 조회"
           >
-            <Shield size={10} className="shrink-0" /> 개인정보파일 관리
+            <Shield size={10} className="shrink-0" /> 개인정보처리방침
           </button>
           <p>© INBIGO. All Rights Reserved.</p>
         </footer>
@@ -471,6 +471,7 @@ export default function App() {
         {isPrivacyOpen && (
           <PrivacyFilesModal 
             onClose={() => setIsPrivacyOpen(false)}
+            readOnly={true}
           />
         )}
       </AnimatePresence>
