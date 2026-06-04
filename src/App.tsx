@@ -13,7 +13,8 @@ import {
   Star,
   Lock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Shield
 } from 'lucide-react';
 import { 
   collection, 
@@ -54,6 +55,7 @@ import Timetable from './components/Timetable';
 import AdminPanel from './components/AdminPanel';
 import ReservationModal from './components/ReservationModal';
 import WorkReport from './components/WorkReport';
+import PrivacyFilesModal from './components/PrivacyFilesModal';
 
 export default function App() {
   const [tutors, setTutors] = React.useState<Tutor[]>([]);
@@ -71,6 +73,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [closedMonths, setClosedMonths] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [isPrivacyOpen, setIsPrivacyOpen] = React.useState(false);
 
   const printRef = React.useRef<HTMLDivElement>(null);
 
@@ -327,8 +330,15 @@ export default function App() {
           </section>
         </div>
 
-        <footer className="pt-6 border-t border-[#E0E0E0]/50 text-[10px] text-[#9E9E9E] font-bold text-center">
-          <p className="mb-1">Version 1.1.0 (2026)</p>
+        <footer className="pt-6 border-t border-[#E0E0E0]/50 text-[10px] text-[#9E9E9E] font-bold text-center flex flex-col items-center gap-1.5">
+          <p>Version 1.1.0 (2026)</p>
+          <button 
+            onClick={() => setIsPrivacyOpen(true)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6A1B9A] border border-[#E1BEE7]/45 rounded-lg text-[9px] font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
+            title="개인정보 수집 이용 동의서 및 파일 안전 관리"
+          >
+            <Shield size={10} className="shrink-0" /> 개인정보파일 관리
+          </button>
           <p>© INBIGO. All Rights Reserved.</p>
         </footer>
       </aside>
@@ -455,6 +465,12 @@ export default function App() {
             reservations={reservations}
             confirmerName={confirmerName}
             onClose={() => setIsWorkReportOpen(false)}
+          />
+        )}
+
+        {isPrivacyOpen && (
+          <PrivacyFilesModal 
+            onClose={() => setIsPrivacyOpen(false)}
           />
         )}
       </AnimatePresence>

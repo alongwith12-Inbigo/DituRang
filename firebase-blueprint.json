@@ -51,6 +51,19 @@
         "closedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["closed"]
+    },
+    "privacy_file": {
+      "title": "Privacy File",
+      "description": "Uploaded personal information files or consent forms",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "uploadedAt": { "type": "string", "format": "date-time" },
+        "fileSize": { "type": "number" },
+        "fileType": { "type": "string" },
+        "fileContent": { "type": "string" }
+      },
+      "required": ["name", "fileSize", "fileType", "fileContent"]
     }
   },
   "firestore": {
@@ -69,6 +82,10 @@
     "closed_months": {
       "schema": "closed_month",
       "description": "Collection of closed months"
+    },
+    "privacy_files": {
+      "schema": "privacy_file",
+      "description": "Collection of uploaded personal information records"
     }
   }
 }
