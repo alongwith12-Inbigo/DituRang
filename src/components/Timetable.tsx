@@ -136,7 +136,7 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
                         "p-0.5 lg:p-1 border-b border-r last:border-r-0 border-[#FDFBFF] relative group h-10 lg:h-14 min-h-[40px] lg:min-h-[56px] print:h-12 transition-all cursor-default",
                         !active && "bg-[#F9F8FD]/40 opacity-30 cursor-not-allowed",
                         active && !reservation && !closed && (tutor.id === 'tutor1' ? "bg-[#FFE0E6] hover:bg-[#FFD1DA] cursor-pointer" : "bg-[#E3F2FF] hover:bg-[#D4E9FF] cursor-pointer"),
-                        active && !reservation && closed && "bg-[#F5F5F5] opacity-50 cursor-not-allowed",
+                        active && !reservation && closed && (tutor.id === 'tutor1' ? "bg-[#FFE0E6] cursor-not-allowed" : "bg-[#E3F2FF] cursor-not-allowed"),
                         active && reservation && (tutor.id === 'tutor1' ? "bg-[#FFC1D1]" : "bg-[#B3E5FC]")
                       )}
                     >
