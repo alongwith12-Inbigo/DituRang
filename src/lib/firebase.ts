@@ -14,8 +14,11 @@ export async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error: any) {
-    if (error?.message?.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+    if (error?.code === 'unavailable' || error?.message?.includes('the client is offline') || error?.message?.includes('Could not reach Cloud Firestore')) {
+      // Handled: Firestore will automatically operate in cache mode and retry connection
+      console.warn("Firestore connection initializing or running in offline mode.");
+    } else {
+      console.warn("Firestore test connection check:", error?.message || error);
     }
   }
 }

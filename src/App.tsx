@@ -379,7 +379,7 @@ export default function App() {
         </div>
 
         <footer className="pt-6 border-t border-[#E0E0E0]/50 text-[10px] text-[#9E9E9E] font-bold text-center flex flex-col items-center gap-1">
-          <p>Version 1.2.1 (2026)</p>
+          <p>Version 1.2.2 (2026)</p>
           <button 
             onClick={handleDownloadPrivacyPolicy}
             className="hover:underline hover:text-[#7B1FA2] transition-colors cursor-pointer text-[10px] text-[#9E9E9E] font-bold"

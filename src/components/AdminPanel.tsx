@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { X, Save, Lock, Unlock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users, Upload, Download, FileText, File, ShieldAlert, AlertCircle, Shield } from 'lucide-react';
 import { setDoc, doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { startOfWeek, startOfToday, addWeeks, addDays, format } from 'date-fns';
+import { startOfWeek, startOfToday, addWeeks, addDays, format, parseISO } from 'date-fns';
 import { db, auth } from '../lib/firebase';
 import { Tutor, DAYS, SchoolEvent } from '../types';
 import { cn } from '../lib/utils';
@@ -190,12 +190,36 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
   const [selectedWeekOffset, setSelectedWeekOffset] = React.useState(0);
   const [editMode, setEditMode] = React.useState<'default' | 'week'>('default');
 
-  const currentWeeks = Array.from({ length: 8 }).map((_, i) => {
-    const start = startOfWeek(addWeeks(startOfToday(), i), { weekStartsOn: 1 });
-    return format(start, 'yyyy-MM-dd');
-  });
+  const availableWeeks = React.useMemo(() => {
+    const list = [];
+    const today = startOfToday();
+    // Support from 24 weeks ago (-24) to 20 weeks in the future (+20)
+    for (let offset = -24; offset <= 20; offset++) {
+      const start = startOfWeek(addWeeks(today, offset), { weekStartsOn: 1 });
+      const end = addDays(start, 4);
+      const dateStr = format(start, 'yyyy-MM-dd');
+      let relativeLabel = '';
+      if (offset === 0) relativeLabel = '이번 주';
+      else if (offset === 1) relativeLabel = '다음 주';
+      else if (offset === -1) relativeLabel = '지난 주';
+      else if (offset > 1) relativeLabel = `${offset}주 뒤`;
+      else relativeLabel = `${Math.abs(offset)}주 전`;
 
-  const targetWeekStart = currentWeeks[selectedWeekOffset];
+      const displayLabel = `${format(start, 'yyyy.MM.dd')} ~ ${format(end, 'MM.dd')} (${relativeLabel})`;
+      list.push({
+        offset,
+        dateStr,
+        start,
+        end,
+        relativeLabel,
+        displayLabel
+      });
+    }
+    return list;
+  }, []);
+
+  const currentWeekObj = availableWeeks.find(w => w.offset === selectedWeekOffset) || availableWeeks.find(w => w.offset === 0) || availableWeeks[0];
+  const targetWeekStart = currentWeekObj.dateStr;
 
   // Initialize with exactly 2 tutors, merging existing data if available
   React.useEffect(() => {
@@ -527,12 +551,13 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                     <select 
                       value={selectedWeekOffset}
                       onChange={e => setSelectedWeekOffset(Number(e.target.value))}
-                      className="bg-transparent text-xs font-bold text-[#455A64] outline-none cursor-pointer"
+                      className="bg-[#FAFAFA] border border-[#EEEEEE] text-xs font-bold text-[#455A64] py-1.5 px-3 rounded-xl outline-none cursor-pointer hover:border-[#CFD8DC] transition-colors"
                     >
-                      {currentWeeks.map((week, idx) => {
-                        const start = parseISO(week);
-                        return <option key={idx} value={idx}>{format(start, 'M월 ')}{Math.ceil(format(start, 'd') as any / 7)}째주</option>
-                      })}
+                      {availableWeeks.map((week) => (
+                        <option key={week.offset} value={week.offset}>
+                          {week.displayLabel}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 )}
@@ -544,7 +569,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                   <div className="flex flex-col gap-1">
                     <h4 className="text-sm font-black text-blue-700">특정 주차 개별 설정 모드</h4>
                     <p className="text-xs text-blue-600/80 leading-relaxed">
-                      현재 <strong>{format(parseISO(targetWeekStart), 'yyyy년 MM월 dd일')}</strong>이 포함된 주차를 편집 중입니다. 
+                      현재 <strong>{currentWeekObj.displayLabel}</strong>를 편집 중입니다. 
                       이 주차의 설정만 변경되며, 기본 주간 설정은 영향을 받지 않습니다.
                     </p>
                   </div>
@@ -585,36 +610,51 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                       </button>
 
                       {showWeekSelector === tutor.id && (
-                        <div className="absolute left-0 top-full mt-2 z-20 bg-white p-6 rounded-3xl shadow-2xl border border-[#EEEEEE] w-72 flex flex-col gap-4">
-                          <h5 className="text-[10px] font-black text-[#546E7A] uppercase tracking-widest">적용할 주차 선택</h5>
-                          <div className="grid grid-cols-2 gap-2">
-                            {currentWeeks.map((week, idx) => (
-                              <button 
-                                key={week}
-                                onClick={() => toggleWeekInApply(week)}
-                                className={cn(
-                                  "px-3 py-2 rounded-xl text-[10px] font-bold border transition-all text-left",
-                                  applyingWeeks.includes(week) 
-                                    ? "bg-[#039BE5] border-[#039BE5] text-white" 
-                                    : "bg-white border-[#EEEEEE] text-[#90A4AE] hover:border-sky-200"
-                                )}
-                              >
-                                {idx === 0 ? '이번 주' : `${idx}주 뒤`} ({format(parseISO(week), 'M/d')})
-                              </button>
-                            ))}
+                        <div className="absolute left-0 top-full mt-2 z-20 bg-white p-6 rounded-3xl shadow-2xl border border-[#EEEEEE] w-80 flex flex-col gap-4">
+                          <div className="flex items-center justify-between">
+                            <h5 className="text-[10px] font-black text-[#546E7A] uppercase tracking-widest">적용할 주차 선택</h5>
+                            <span className="text-[10px] text-[#039BE5] font-bold">{applyingWeeks.length}개 선택됨</span>
                           </div>
-                          <div className="flex gap-2 pt-2">
+                          <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1">
+                            {availableWeeks.map((week) => {
+                              const isSelected = applyingWeeks.includes(week.dateStr);
+                              return (
+                                <button 
+                                  key={week.dateStr}
+                                  onClick={() => toggleWeekInApply(week.dateStr)}
+                                  className={cn(
+                                    "px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between text-left",
+                                    isSelected 
+                                      ? "bg-[#039BE5] border-[#039BE5] text-white shadow-xs" 
+                                      : "bg-white border-[#EEEEEE] text-[#607D8B] hover:border-sky-200 hover:bg-[#F9FAFB]"
+                                  )}
+                                >
+                                  <span className="font-mono text-[11px]">{format(week.start, 'yyyy.MM.dd')}~{format(week.end, 'MM.dd')}</span>
+                                  <span className={cn(
+                                    "text-[10px] px-1.5 py-0.5 rounded-md font-semibold",
+                                    isSelected ? "bg-white/25 text-white" : "bg-[#ECEFF1] text-[#546E7A]"
+                                  )}>
+                                    {week.relativeLabel}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="flex gap-2 pt-2 border-t border-[#EEEEEE]">
                             <button 
-                              onClick={() => setShowWeekSelector(null)}
-                              className="flex-1 py-3 text-[10px] font-bold text-gray-400 hover:text-gray-600"
+                              onClick={() => {
+                                setShowWeekSelector(null);
+                                setApplyingWeeks([]);
+                              }}
+                              className="flex-1 py-2.5 text-xs font-bold text-gray-400 hover:text-gray-600 rounded-xl"
                             >
                               취소
                             </button>
                             <button 
                               onClick={() => applyToSelectedWeeks(tutor.id)}
-                              className="flex-2 py-3 bg-[#039BE5] text-white rounded-xl text-[10px] font-black shadow-lg shadow-sky-100"
+                              className="flex-2 py-2.5 bg-[#039BE5] text-white rounded-xl text-xs font-black shadow-lg shadow-sky-100 hover:bg-[#0288D1] transition-all"
                             >
-                              선택 주차 적용
+                              선택 주차 적용 ({applyingWeeks.length})
                             </button>
                           </div>
                         </div>
@@ -989,9 +1029,4 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
       </motion.div>
     </div>
   );
-}
-
-function parseISO(dateStr: string) {
-  const parts = dateStr.split('-');
-  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
 }
