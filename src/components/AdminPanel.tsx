@@ -1,25 +1,27 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { X, Save, Lock, Unlock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users, Upload, Download, FileText, File, ShieldAlert, AlertCircle, Shield } from 'lucide-react';
+import { X, Save, Lock, Unlock, UserPlus, Trash2, CheckCircle2, Settings, Check, Info, Calendar, ChevronRight, History, Plus, Users, Upload, Download, FileText, File, ShieldAlert, AlertCircle, Shield, Coins } from 'lucide-react';
 import { setDoc, doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { startOfWeek, startOfToday, addWeeks, addDays, format, parseISO } from 'date-fns';
 import { db, auth } from '../lib/firebase';
-import { Tutor, DAYS, SchoolEvent } from '../types';
+import { Tutor, DAYS, SchoolEvent, Reservation } from '../types';
 import { cn } from '../lib/utils';
+import TutorSalaryReport from './TutorSalaryReport';
 
 interface AdminPanelProps {
   tutors: Tutor[];
   schoolEvents: SchoolEvent[];
   onClose: () => void;
   closedMonths: string[];
+  reservations?: Reservation[];
 }
 
-export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths }: AdminPanelProps) {
+export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths, reservations = [] }: AdminPanelProps) {
   const [password, setPassword] = React.useState('');
   const [isAuthorized, setIsAuthorized] = React.useState(false);
   const [editTutors, setEditTutors] = React.useState<Tutor[]>([]);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<'tutor' | 'calendar' | 'closing' | 'privacy'>('tutor');
+  const [activeTab, setActiveTab] = React.useState<'tutor' | 'salary' | 'calendar' | 'closing' | 'privacy'>('tutor');
 
   // Privacy Documents Management States
   const [privacyFiles, setPrivacyFiles] = React.useState<any[]>([]);
@@ -461,29 +463,38 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
             </div>
             <div className="flex flex-col">
               <h2 className="text-xl font-black text-[#455A64]">
-                {activeTab === 'tutor' ? '시간표 마스터 관리' : activeTab === 'calendar' ? '학사일정 관리' : activeTab === 'closing' ? '월 마감 관리' : '개인정보처리방침 관리'}
+                {activeTab === 'tutor' ? '시간표 마스터 관리' : activeTab === 'salary' ? '튜터 월급 및 근무시간 정산' : activeTab === 'calendar' ? '학사일정 관리' : activeTab === 'closing' ? '월 마감 관리' : '개인정보처리방침 관리'}
               </h2>
               <p className="text-[10px] font-bold text-[#B0BEC5] tracking-widest uppercase mt-0.5">
-                {activeTab === 'tutor' ? 'Tutor Assets & Period Overrides' : activeTab === 'calendar' ? 'School Academic Calendar' : activeTab === 'closing' ? 'Monthly Payroll & System Locks' : 'Privacy Agreements & Secure Files'}
+                {activeTab === 'tutor' ? 'Tutor Assets & Period Overrides' : activeTab === 'salary' ? 'Tutor Payroll & Work Hours Ledger' : activeTab === 'calendar' ? 'School Academic Calendar' : activeTab === 'closing' ? 'Monthly Payroll & System Locks' : 'Privacy Agreements & Secure Files'}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-4 bg-white p-1.5 rounded-2xl border border-[#EEEEEE] shadow-sm">
-            <div className="flex">
+            <div className="flex flex-wrap gap-1">
               <button 
                 onClick={() => setActiveTab('tutor')}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
                   activeTab === 'tutor' ? "bg-[#455A64] text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
                 )}
               >
                 <Users size={14} /> 튜터 및 시간표
               </button>
               <button 
+                onClick={() => setActiveTab('salary')}
+                className={cn(
+                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
+                  activeTab === 'salary' ? "bg-[#1E88E5] text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
+                )}
+              >
+                <Coins size={14} /> 튜터 월급 정산
+              </button>
+              <button 
                 onClick={() => setActiveTab('calendar')}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
                   activeTab === 'calendar' ? "bg-[#FBC02D] text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
                 )}
               >
@@ -492,7 +503,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
               <button 
                 onClick={() => setActiveTab('closing')}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
                   activeTab === 'closing' ? "bg-red-500 text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
                 )}
               >
@@ -501,7 +512,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
               <button 
                 onClick={() => setActiveTab('privacy')}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                  "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
                   activeTab === 'privacy' ? "bg-purple-600 text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
                 )}
               >
@@ -725,6 +736,8 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
               </section>
             )})}
             </div>
+          ) : activeTab === 'salary' ? (
+            <TutorSalaryReport tutors={editTutors} reservations={reservations} />
           ) : activeTab === 'calendar' ? (
             <div className="space-y-8 max-w-2xl mx-auto">
               <section className="p-8 bg-amber-50/30 rounded-[2.5rem] border border-amber-100/50 space-y-6">
@@ -998,6 +1011,11 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                 {isSaving ? "처리 중..." : <><Save size={18} /> 최종 설정 저장하기</>}
               </button>
             </>
+          ) : activeTab === 'salary' ? (
+             <div className="flex items-center gap-2 text-[#1E88E5]">
+               <Coins size={16} />
+               <p className="text-[10px] font-bold italic tracking-tight">지급 단가: 시간당 30,000원 | 주간 한도: 최대 14시간 | 월간 한도: 최대 60시간 규정이 자동 계산되어 반영됩니다.</p>
+             </div>
           ) : activeTab === 'calendar' ? (
              <div className="flex items-center gap-2 text-[#B0BEC5]">
                <Info size={16} />

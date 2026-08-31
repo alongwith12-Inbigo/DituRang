@@ -503,6 +503,7 @@ export default function App() {
             tutors={tutors}
             schoolEvents={schoolEvents}
             closedMonths={closedMonths}
+            reservations={reservations}
             onClose={() => setIsAdminOpen(false)}
           />
         )}
