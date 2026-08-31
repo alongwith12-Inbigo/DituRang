@@ -198,20 +198,14 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
       const start = startOfWeek(addWeeks(today, offset), { weekStartsOn: 1 });
       const end = addDays(start, 4);
       const dateStr = format(start, 'yyyy-MM-dd');
-      let relativeLabel = '';
-      if (offset === 0) relativeLabel = '이번 주';
-      else if (offset === 1) relativeLabel = '다음 주';
-      else if (offset === -1) relativeLabel = '지난 주';
-      else if (offset > 1) relativeLabel = `${offset}주 뒤`;
-      else relativeLabel = `${Math.abs(offset)}주 전`;
+      const endFormat = start.getFullYear() === end.getFullYear() ? 'MM.dd' : 'yyyy.MM.dd';
+      const displayLabel = `${format(start, 'yyyy.MM.dd')} ~ ${format(end, endFormat)}`;
 
-      const displayLabel = `${format(start, 'yyyy.MM.dd')} ~ ${format(end, 'MM.dd')} (${relativeLabel})`;
       list.push({
         offset,
         dateStr,
         start,
         end,
-        relativeLabel,
         displayLabel
       });
     }
@@ -623,19 +617,14 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                                   key={week.dateStr}
                                   onClick={() => toggleWeekInApply(week.dateStr)}
                                   className={cn(
-                                    "px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-between text-left",
+                                    "px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-between text-left",
                                     isSelected 
                                       ? "bg-[#039BE5] border-[#039BE5] text-white shadow-xs" 
-                                      : "bg-white border-[#EEEEEE] text-[#607D8B] hover:border-sky-200 hover:bg-[#F9FAFB]"
+                                      : "bg-white border-[#EEEEEE] text-[#546E7A] hover:border-sky-200 hover:bg-[#F9FAFB]"
                                   )}
                                 >
-                                  <span className="font-mono text-[11px]">{format(week.start, 'yyyy.MM.dd')}~{format(week.end, 'MM.dd')}</span>
-                                  <span className={cn(
-                                    "text-[10px] px-1.5 py-0.5 rounded-md font-semibold",
-                                    isSelected ? "bg-white/25 text-white" : "bg-[#ECEFF1] text-[#546E7A]"
-                                  )}>
-                                    {week.relativeLabel}
-                                  </span>
+                                  <span className="font-mono text-xs">{week.displayLabel}</span>
+                                  {isSelected && <Check size={14} className="text-white" />}
                                 </button>
                               );
                             })}
