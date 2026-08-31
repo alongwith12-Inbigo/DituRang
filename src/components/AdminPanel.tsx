@@ -737,7 +737,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
             )})}
             </div>
           ) : activeTab === 'salary' ? (
-            <TutorSalaryReport tutors={editTutors} reservations={reservations} />
+            <TutorSalaryReport tutors={editTutors} reservations={reservations} schoolEvents={schoolEvents} />
           ) : activeTab === 'calendar' ? (
             <div className="space-y-8 max-w-2xl mx-auto">
               <section className="p-8 bg-amber-50/30 rounded-[2.5rem] border border-amber-100/50 space-y-6">

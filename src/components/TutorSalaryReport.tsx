@@ -1,13 +1,14 @@
 import React from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, addDays, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Tutor, Reservation } from '../types';
+import { Tutor, Reservation, SchoolEvent } from '../types';
 import { cn } from '../lib/utils';
-import { Coins, Clock, AlertTriangle, Download, Printer, CheckCircle2, ChevronRight, Info, Calendar } from 'lucide-react';
+import { Coins, Clock, Download, Printer, ChevronRight, Calendar, UserCheck, CheckCircle2 } from 'lucide-react';
 
 interface TutorSalaryReportProps {
   tutors: Tutor[];
   reservations?: Reservation[];
+  schoolEvents?: SchoolEvent[];
 }
 
 interface MonthDetail {
@@ -42,8 +43,9 @@ const HOURLY_RATE = 30000;
 const MAX_WEEKLY_HOURS = 14;
 const MAX_MONTHLY_HOURS = 60;
 const TARGET_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11, 12];
+const SYSTEM_START_DATE = '2026-04-28'; // 근무 개시 기준일 (4월은 4/28부터 산정)
 
-export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSalaryReportProps) {
+export default function TutorSalaryReport({ tutors, reservations = [], schoolEvents = [] }: TutorSalaryReportProps) {
   const [selectedYear, setSelectedYear] = React.useState<number>(2026);
   const [selectedDetail, setSelectedDetail] = React.useState<{
     month: number;
@@ -60,16 +62,25 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
 
   // Helper to check if slot is active
   const isSlotActive = (tutor: Tutor, dateStr: string, period: number) => {
+    // Check system start date restriction
+    if (selectedYear === 2026 && dateStr < SYSTEM_START_DATE) {
+      return false;
+    }
+
     const dayDate = parseISO(dateStr);
     const dayIdx = (dayDate.getDay() + 6) % 7; // Monday = 0
     if (dayIdx >= 5) return false; // Weekend
+
     const mon = getWeekStart(dateStr);
     return tutor.weekOverrides?.[mon]?.[dayIdx]?.includes(period) ?? tutor.workSchedule?.[dayIdx]?.includes(period) ?? false;
   };
 
+  const tutor1 = tutors.find(t => t.id === 'tutor1') || tutors[0] || { id: 'tutor1', name: '튜터 1', isActive: true, workSchedule: {} };
+  const tutor2 = tutors.find(t => t.id === 'tutor2') || tutors[1] || { id: 'tutor2', name: '튜터 2', isActive: true, workSchedule: {} };
+  const activeTutors = [tutor1, tutor2];
+
   // Calculate monthly stats for 4월 ~ 12월
   const reportData = React.useMemo(() => {
-    const activeTutors = tutors.slice(0, 2); // Two tutors
     const monthsData: MonthDetail[] = [];
 
     // Running cumulative trackers for each tutor
@@ -101,7 +112,7 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
           const dateStr = format(day, 'yyyy-MM-dd');
           const weekStart = getWeekStart(dateStr);
 
-          // Find active periods
+          // Find active periods (respecting 2026-04-28 start date)
           const activePeriods = [1, 2, 3, 4, 5, 6, 7].filter(p => isSlotActive(tutor, dateStr, p));
           const hours = activePeriods.length;
 
@@ -183,12 +194,9 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
     });
 
     return monthsData;
-  }, [tutors, selectedYear]);
+  }, [tutors, selectedYear, tutor1.id, tutor2.id]);
 
-  const tutor1 = tutors.find(t => t.id === 'tutor1') || tutors[0] || { id: 'tutor1', name: '튜터 1', isActive: true, workSchedule: {} };
-  const tutor2 = tutors.find(t => t.id === 'tutor2') || tutors[1] || { id: 'tutor2', name: '튜터 2', isActive: true, workSchedule: {} };
-
-  // Totals for all 4~12 months
+  // Grand totals for 4~12 months
   const grandTotal = React.useMemo(() => {
     const t1Last = reportData[reportData.length - 1]?.tutorStats[tutor1.id];
     const t2Last = reportData[reportData.length - 1]?.tutorStats[tutor2.id];
@@ -208,16 +216,15 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
     const headers = [
       '월',
       `${tutor1.name}_근무시간(시간)`,
-      `${tutor1.name}_월급(원)`,
-      `${tutor1.name}_근무시간누계(시간)`,
+      `${tutor1.name}_해당월급(원)`,
+      `${tutor1.name}_근무누계(시간)`,
       `${tutor1.name}_월급누계(원)`,
       `${tutor2.name}_근무시간(시간)`,
-      `${tutor2.name}_월급(원)`,
-      `${tutor2.name}_근무시간누계(시간)`,
+      `${tutor2.name}_해당월급(원)`,
+      `${tutor2.name}_근무누계(시간)`,
       `${tutor2.name}_월급누계(원)`,
-      '당월합계_근무시간(시간)',
-      '당월합계_지급액(원)',
-      '총누계_지급액(원)'
+      '월별합계_총근무시간(시간)',
+      '월별합계_총지급액(원)'
     ];
 
     const rows = reportData.map(r => {
@@ -234,8 +241,7 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
         s2?.cumHours ?? 0,
         s2?.cumSalary ?? 0,
         r.totalPayableHours,
-        r.totalSalary,
-        r.totalCumSalary
+        r.totalSalary
       ];
     });
 
@@ -251,7 +257,6 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
       grandTotal.t2TotalHours,
       grandTotal.t2TotalSalary,
       grandTotal.allTotalHours,
-      grandTotal.allTotalSalary,
       grandTotal.allTotalSalary
     ]);
 
@@ -264,7 +269,7 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${selectedYear}년_디지털튜터_월급정산표(4월~12월).csv`;
+    link.download = `${selectedYear}년_튜터_월급정산표(4월~12월).csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -275,27 +280,32 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Info Cards */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-[#ECEFF1] to-[#F5F5F5] p-6 rounded-3xl border border-[#CFD8DC]/60">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-[#455A64] text-white rounded-2xl shadow-md">
-            <Coins size={24} />
+      {/* Top Header Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <Coins size={22} />
           </div>
           <div>
-            <h3 className="text-lg font-black text-[#263238]">디지털 튜터 월급 및 근무시간 정산표</h3>
-            <p className="text-xs font-bold text-[#607D8B] mt-0.5">
-              4월부터 12월까지의 월별 근무시간, 지급 월급 및 누계 현황 종합 관리
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-black text-slate-800">튜터 월급 및 근무시간 정산표</h3>
+              <span className="text-[11px] px-2 py-0.5 bg-blue-100/80 text-blue-700 font-bold rounded-md">
+                4월~12월 통합
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              기준 단가 30,000원/시간 | 주간 최대 14시간 | 월간 최대 60시간 (근무개시: 2026.04.28~)
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center bg-white px-3 py-1.5 rounded-xl border border-[#CFD8DC] shadow-xs">
-            <span className="text-xs font-black text-[#546E7A] mr-2">기준 연도:</span>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+            <span className="text-xs font-bold text-slate-500 mr-2">연도</span>
             <select
               value={selectedYear}
               onChange={e => setSelectedYear(Number(e.target.value))}
-              className="bg-transparent text-sm font-black text-[#263238] outline-none cursor-pointer"
+              className="bg-transparent text-xs font-black text-slate-800 outline-none cursor-pointer"
             >
               {[2025, 2026, 2027, 2028].map(y => (
                 <option key={y} value={y}>{y}년</option>
@@ -305,115 +315,147 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white text-[#37474F] hover:bg-[#ECEFF1] border border-[#CFD8DC] rounded-xl text-xs font-black shadow-xs transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
-            <Download size={14} /> 엑셀(CSV) 다운로드
+            <Download size={14} /> 엑셀 다운로드
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#37474F] hover:bg-[#263238] text-white rounded-xl text-xs font-black shadow-xs transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
             <Printer size={14} /> 인쇄
           </button>
         </div>
       </div>
 
-      {/* Rules & Highlights */}
+      {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-[#EEEEEE] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Coins size={20} />
+        {/* Tutor 1 Card */}
+        <div className="bg-gradient-to-br from-rose-50/60 to-white p-4 rounded-2xl border border-rose-100 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-black text-sm">
+              1
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-black text-slate-800">{tutor1.name}</span>
+                <span className="text-[10px] text-rose-600 font-bold bg-rose-100/60 px-1.5 py-0.5 rounded">총 9개월</span>
+              </div>
+              <p className="text-xs font-bold text-slate-500 mt-0.5">총 {grandTotal.t1TotalHours}시간 근무</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-[#90A4AE]">지급 단가 (시급)</p>
-            <p className="text-base font-black text-[#37474F] mt-0.5">30,000원 / 시간</p>
+          <div className="text-right">
+            <span className="text-[10px] font-bold text-slate-400">총 누계 지급액</span>
+            <p className="text-base font-black text-rose-600">{grandTotal.t1TotalSalary.toLocaleString()}원</p>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-[#EEEEEE] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-sky-50 text-[#0288D1] flex items-center justify-center shrink-0">
-            <Clock size={20} />
+        {/* Tutor 2 Card */}
+        <div className="bg-gradient-to-br from-sky-50/60 to-white p-4 rounded-2xl border border-sky-100 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center font-black text-sm">
+              2
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-black text-slate-800">{tutor2.name}</span>
+                <span className="text-[10px] text-sky-600 font-bold bg-sky-100/60 px-1.5 py-0.5 rounded">총 9개월</span>
+              </div>
+              <p className="text-xs font-bold text-slate-500 mt-0.5">총 {grandTotal.t2TotalHours}시간 근무</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-[#90A4AE]">주간 근무 한도</p>
-            <p className="text-base font-black text-[#37474F] mt-0.5">최대 14시간 / 주</p>
+          <div className="text-right">
+            <span className="text-[10px] font-bold text-slate-400">총 누계 지급액</span>
+            <p className="text-base font-black text-sky-600">{grandTotal.t2TotalSalary.toLocaleString()}원</p>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-[#EEEEEE] shadow-xs flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-            <Calendar size={20} />
+        {/* Overall Grand Total Card */}
+        <div className="bg-gradient-to-br from-amber-50/80 to-white p-4 rounded-2xl border border-amber-200 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black text-sm">
+              합
+            </div>
+            <div>
+              <span className="text-sm font-black text-slate-800">전체 튜터 합산 (4~12월)</span>
+              <p className="text-xs font-bold text-slate-500 mt-0.5">총 {grandTotal.allTotalHours}시간 집계</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-[#90A4AE]">월간 근무 한도</p>
-            <p className="text-base font-black text-[#37474F] mt-0.5">최대 60시간 / 월</p>
+          <div className="text-right">
+            <span className="text-[10px] font-bold text-slate-400">총 소요 예산</span>
+            <p className="text-base font-black text-amber-700">{grandTotal.allTotalSalary.toLocaleString()}원</p>
           </div>
         </div>
       </div>
 
-      {/* Main Single Combined Table */}
-      <div className="bg-white rounded-3xl border border-[#E0E0E0] shadow-sm overflow-hidden">
-        <div className="p-5 bg-[#FAFAFA] border-b border-[#EEEEEE] flex items-center justify-between">
+      {/* Main Table Container with Clear Layout & Readable Typography */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h4 className="text-sm font-black text-[#37474F]">{selectedYear}년 4월 ~ 12월 튜터 급여 정산 일람표</h4>
-            <span className="text-[11px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full font-bold">
-              선생님 2명 통합 표
-            </span>
+            <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+            <h4 className="text-xs font-black text-slate-700">월별 근무시간 및 급여 정산 일람표</h4>
+            <span className="text-[11px] text-slate-400">|</span>
+            <span className="text-[11px] text-slate-500 font-medium">행을 클릭하면 해당 월의 주차별 상세 내역을 확인할 수 있습니다.</span>
           </div>
-          <p className="text-[11px] text-[#90A4AE]">
-            * 각 월의 셀을 클릭하면 주차별 상세 근무 내역을 확인할 수 있습니다.
-          </p>
+          <span className="text-[11px] font-bold text-slate-400">단위: 시간, 원(KRW)</span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-center border-collapse">
+          <table className="w-full text-xs text-left border-collapse min-w-[960px]">
             <thead>
-              {/* Header Tier 1 */}
-              <tr className="bg-[#455A64] text-white font-bold h-11 border-b border-[#37474F]">
-                <th rowSpan={2} className="px-3 py-2 border-r border-[#546E7A] w-14 font-black">
-                  구분
+              {/* Group Tier Headers */}
+              <tr className="border-b border-slate-200 text-center font-bold">
+                <th rowSpan={2} className="py-3 px-3.5 bg-slate-100 text-slate-700 border-r border-slate-200 w-16 text-center">
+                  월별
                 </th>
-                <th colSpan={4} className="px-4 py-2 border-r border-[#546E7A] bg-[#37474F]">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#FF80AB]"></span>
-                    <span className="text-sm font-black text-white">{tutor1.name}</span>
+                
+                {/* Tutor 1 Header Group */}
+                <th colSpan={4} className="py-2.5 px-3 bg-rose-50/90 text-rose-900 border-r border-rose-200">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span className="text-xs font-black">{tutor1.name}</span>
                   </div>
                 </th>
-                <th colSpan={4} className="px-4 py-2 border-r border-[#546E7A] bg-[#263238]">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#40C4FF]"></span>
-                    <span className="text-sm font-black text-white">{tutor2.name}</span>
+
+                {/* Tutor 2 Header Group */}
+                <th colSpan={4} className="py-2.5 px-3 bg-sky-50/90 text-sky-900 border-r border-sky-200">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+                    <span className="text-xs font-black">{tutor2.name}</span>
                   </div>
                 </th>
-                <th colSpan={2} className="px-4 py-2 bg-[#1B2428]">
-                  <span className="text-sm font-black text-amber-300">월별 합계</span>
+
+                {/* Combined Total Header Group */}
+                <th colSpan={2} className="py-2.5 px-3 bg-amber-50/90 text-amber-950 border-r border-amber-200">
+                  <span className="text-xs font-black">월별 합계</span>
                 </th>
-                <th rowSpan={2} className="px-3 py-2 w-14 font-bold bg-[#1B2428] border-l border-[#37474F]">
+
+                <th rowSpan={2} className="py-3 px-2.5 bg-slate-100 text-slate-600 w-12 text-center">
                   상세
                 </th>
               </tr>
 
-              {/* Header Tier 2 */}
-              <tr className="bg-[#546E7A] text-white font-bold h-9 border-b border-[#37474F] text-[11px]">
-                {/* Tutor 1 Columns */}
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#455A64]">근무시간</th>
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#455A64]">해당 월급</th>
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#3E4F57]">근무 누계</th>
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#3E4F57]">월급 누계</th>
+              {/* Sub Columns Header */}
+              <tr className="border-b border-slate-200 text-[11px] font-bold text-center text-slate-600">
+                {/* Tutor 1 Sub Columns */}
+                <th className="py-2 px-2.5 bg-rose-50/40 border-r border-slate-200/80 whitespace-nowrap">근무시간</th>
+                <th className="py-2 px-2.5 bg-rose-50/40 border-r border-slate-200/80 whitespace-nowrap">해당 월급</th>
+                <th className="py-2 px-2.5 bg-rose-50/20 border-r border-slate-200/80 text-slate-500 whitespace-nowrap">근무 누계</th>
+                <th className="py-2 px-2.5 bg-rose-50/20 border-r border-rose-200 text-slate-500 whitespace-nowrap">월급 누계</th>
 
-                {/* Tutor 2 Columns */}
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#37474F]">근무시간</th>
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#37474F]">해당 월급</th>
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#2E3C42]">근무 누계</th>
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#2E3C42]">월급 누계</th>
+                {/* Tutor 2 Sub Columns */}
+                <th className="py-2 px-2.5 bg-sky-50/40 border-r border-slate-200/80 whitespace-nowrap">근무시간</th>
+                <th className="py-2 px-2.5 bg-sky-50/40 border-r border-slate-200/80 whitespace-nowrap">해당 월급</th>
+                <th className="py-2 px-2.5 bg-sky-50/20 border-r border-slate-200/80 text-slate-500 whitespace-nowrap">근무 누계</th>
+                <th className="py-2 px-2.5 bg-sky-50/20 border-r border-sky-200 text-slate-500 whitespace-nowrap">월급 누계</th>
 
-                {/* Total Columns */}
-                <th className="px-2 py-1.5 border-r border-[#607D8B] bg-[#263238] text-amber-200">총 근무시간</th>
-                <th className="px-2 py-1.5 bg-[#263238] text-amber-200">총 지급액</th>
+                {/* Total Sub Columns */}
+                <th className="py-2 px-2.5 bg-amber-50/40 border-r border-slate-200/80 text-amber-900 whitespace-nowrap">총 근무시간</th>
+                <th className="py-2 px-2.5 bg-amber-50/40 border-r border-amber-200 text-amber-900 whitespace-nowrap">총 지급액</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-[#EEEEEE]">
+            <tbody className="divide-y divide-slate-100">
               {reportData.map((row, idx) => {
                 const s1 = row.tutorStats[tutor1.id];
                 const s2 = row.tutorStats[tutor2.id];
@@ -422,27 +464,27 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
                   <tr 
                     key={row.month} 
                     className={cn(
-                      "hover:bg-sky-50/50 transition-colors h-12 font-medium cursor-pointer",
-                      idx % 2 === 0 ? "bg-white" : "bg-[#FAFAFA]"
+                      "hover:bg-blue-50/40 transition-colors h-11 font-medium cursor-pointer",
+                      idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
                     )}
                     onClick={() => setSelectedDetail({ month: row.month, tutor: tutor1, stats: s1 })}
                   >
-                    {/* Month Column */}
-                    <td className="px-2 py-2 font-black text-[#37474F] bg-[#ECEFF1]/40 border-r border-[#E0E0E0]">
+                    {/* Month Cell */}
+                    <td className="py-2 px-3.5 font-black text-slate-800 bg-slate-100/50 border-r border-slate-200 text-center whitespace-nowrap">
                       {row.monthName}
                     </td>
 
-                    {/* Tutor 1: 근무시간 */}
-                    <td className="px-2 py-2 border-r border-[#EEEEEE] font-mono text-xs">
-                      <div className="flex items-center justify-center gap-1">
-                        <span className="font-bold text-[#263238]">{s1?.payableHours || 0}시간</span>
+                    {/* Tutor 1: 당월 근무시간 */}
+                    <td className="py-2 px-2.5 text-center border-r border-slate-100 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1 font-mono font-bold text-slate-800">
+                        <span>{s1?.payableHours || 0}시간</span>
                         {s1?.isWeeklyOver && (
-                          <span className="px-1 py-0.2 text-[9px] bg-amber-100 text-amber-800 rounded font-bold" title="주 14시간 한도 초과분 조정됨">
+                          <span className="px-1 py-0.2 text-[9px] bg-amber-100 text-amber-800 rounded font-bold" title="주 14시간 한도 초과분 조정">
                             주한도
                           </span>
                         )}
                         {s1?.isMonthlyOver && (
-                          <span className="px-1 py-0.2 text-[9px] bg-red-100 text-red-800 rounded font-bold" title="월 60시간 한도 초과분 조정됨">
+                          <span className="px-1 py-0.2 text-[9px] bg-rose-100 text-rose-800 rounded font-bold" title="월 60시간 한도 초과분 조정">
                             월한도
                           </span>
                         )}
@@ -450,31 +492,31 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
                     </td>
 
                     {/* Tutor 1: 해당 월급 */}
-                    <td className="px-2 py-2 border-r border-[#EEEEEE] font-mono text-xs text-right pr-3 text-[#1565C0] font-bold">
+                    <td className="py-2 px-3 text-right font-mono font-black text-rose-600 border-r border-slate-100 whitespace-nowrap">
                       {(s1?.salary || 0).toLocaleString()}원
                     </td>
 
                     {/* Tutor 1: 근무 누계 */}
-                    <td className="px-2 py-2 border-r border-[#EEEEEE] font-mono text-xs bg-[#F5F5F5]/60 text-[#546E7A]">
+                    <td className="py-2 px-2.5 text-center font-mono text-slate-500 bg-slate-50/50 border-r border-slate-100 whitespace-nowrap">
                       {s1?.cumHours || 0}시간
                     </td>
 
                     {/* Tutor 1: 월급 누계 */}
-                    <td className="px-2 py-2 border-r border-[#E0E0E0] font-mono text-xs bg-[#F5F5F5]/60 text-right pr-3 text-[#37474F] font-bold">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-slate-700 bg-slate-50/50 border-r border-rose-100 whitespace-nowrap">
                       {(s1?.cumSalary || 0).toLocaleString()}원
                     </td>
 
-                    {/* Tutor 2: 근무시간 */}
-                    <td className="px-2 py-2 border-r border-[#EEEEEE] font-mono text-xs">
-                      <div className="flex items-center justify-center gap-1">
-                        <span className="font-bold text-[#263238]">{s2?.payableHours || 0}시간</span>
+                    {/* Tutor 2: 당월 근무시간 */}
+                    <td className="py-2 px-2.5 text-center border-r border-slate-100 whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1 font-mono font-bold text-slate-800">
+                        <span>{s2?.payableHours || 0}시간</span>
                         {s2?.isWeeklyOver && (
-                          <span className="px-1 py-0.2 text-[9px] bg-amber-100 text-amber-800 rounded font-bold" title="주 14시간 한도 초과분 조정됨">
+                          <span className="px-1 py-0.2 text-[9px] bg-amber-100 text-amber-800 rounded font-bold" title="주 14시간 한도 초과분 조정">
                             주한도
                           </span>
                         )}
                         {s2?.isMonthlyOver && (
-                          <span className="px-1 py-0.2 text-[9px] bg-red-100 text-red-800 rounded font-bold" title="월 60시간 한도 초과분 조정됨">
+                          <span className="px-1 py-0.2 text-[9px] bg-rose-100 text-rose-800 rounded font-bold" title="월 60시간 한도 초과분 조정">
                             월한도
                           </span>
                         )}
@@ -482,117 +524,117 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
                     </td>
 
                     {/* Tutor 2: 해당 월급 */}
-                    <td className="px-2 py-2 border-r border-[#EEEEEE] font-mono text-xs text-right pr-3 text-[#0277BD] font-bold">
+                    <td className="py-2 px-3 text-right font-mono font-black text-sky-600 border-r border-slate-100 whitespace-nowrap">
                       {(s2?.salary || 0).toLocaleString()}원
                     </td>
 
                     {/* Tutor 2: 근무 누계 */}
-                    <td className="px-2 py-2 border-r border-[#EEEEEE] font-mono text-xs bg-[#F5F5F5]/60 text-[#546E7A]">
+                    <td className="py-2 px-2.5 text-center font-mono text-slate-500 bg-slate-50/50 border-r border-slate-100 whitespace-nowrap">
                       {s2?.cumHours || 0}시간
                     </td>
 
                     {/* Tutor 2: 월급 누계 */}
-                    <td className="px-2 py-2 border-r border-[#E0E0E0] font-mono text-xs bg-[#F5F5F5]/60 text-right pr-3 text-[#37474F] font-bold">
+                    <td className="py-2 px-3 text-right font-mono font-bold text-slate-700 bg-slate-50/50 border-r border-sky-100 whitespace-nowrap">
                       {(s2?.cumSalary || 0).toLocaleString()}원
                     </td>
 
-                    {/* Monthly Combined: 총 근무시간 */}
-                    <td className="px-2 py-2 border-r border-[#EEEEEE] font-mono text-xs font-bold text-[#37474F] bg-amber-50/30">
+                    {/* Total: 총 근무시간 */}
+                    <td className="py-2 px-2.5 text-center font-mono font-bold text-slate-800 bg-amber-50/30 border-r border-slate-100 whitespace-nowrap">
                       {row.totalPayableHours}시간
                     </td>
 
-                    {/* Monthly Combined: 총 지급액 */}
-                    <td className="px-2 py-2 border-r border-[#EEEEEE] font-mono text-xs font-black text-right pr-3 text-[#D84315] bg-amber-50/30">
+                    {/* Total: 총 지급액 */}
+                    <td className="py-2 px-3 text-right font-mono font-black text-amber-800 bg-amber-50/30 border-r border-amber-100 whitespace-nowrap">
                       {row.totalSalary.toLocaleString()}원
                     </td>
 
-                    {/* Action button */}
-                    <td className="px-2 py-2 text-center" onClick={(e) => { e.stopPropagation(); setSelectedDetail({ month: row.month, tutor: tutor1, stats: s1 }); }}>
+                    {/* Action Button */}
+                    <td className="py-2 px-2 text-center" onClick={(e) => { e.stopPropagation(); setSelectedDetail({ month: row.month, tutor: tutor1, stats: s1 }); }}>
                       <button 
-                        className="p-1 hover:bg-[#ECEFF1] text-[#78909C] hover:text-[#37474F] rounded-lg transition-colors inline-flex items-center"
-                        title="주차별 상세 내역 보기"
+                        className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-lg transition-colors inline-flex items-center cursor-pointer"
+                        title="주차별 상세 내역"
                       >
-                        <ChevronRight size={16} />
+                        <ChevronRight size={15} />
                       </button>
                     </td>
                   </tr>
                 );
               })}
 
-              {/* Total Summary Row (4월 ~ 12월 종합) */}
-              <tr className="bg-[#ECEFF1] font-black text-xs border-t-2 border-[#B0BEC5] h-14">
-                <td className="px-2 py-2 text-[#263238] font-black border-r border-[#CFD8DC]">
-                  총계<br/><span className="text-[10px] font-bold text-[#78909C]">(4~12월)</span>
+              {/* Grand Total Summary Row */}
+              <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold h-12">
+                <td className="py-2 px-3.5 text-center font-black text-slate-900 border-r border-slate-200 whitespace-nowrap">
+                  총계<br/><span className="text-[10px] text-slate-500 font-medium">(4~12월)</span>
                 </td>
 
                 {/* Tutor 1 Totals */}
-                <td className="px-2 py-2 border-r border-[#CFD8DC] font-mono text-sm text-[#263238]">
+                <td className="py-2 px-2.5 text-center font-mono font-black text-slate-900 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.t1TotalHours}시간
                 </td>
-                <td className="px-2 py-2 border-r border-[#CFD8DC] font-mono text-sm text-right pr-3 text-[#1565C0]">
+                <td className="py-2 px-3 text-right font-mono font-black text-rose-600 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.t1TotalSalary.toLocaleString()}원
                 </td>
-                <td className="px-2 py-2 border-r border-[#CFD8DC] font-mono text-xs text-[#546E7A] bg-[#CFD8DC]/30">
+                <td className="py-2 px-2.5 text-center font-mono text-slate-600 bg-slate-200/50 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.t1TotalHours}시간
                 </td>
-                <td className="px-2 py-2 border-r border-[#B0BEC5] font-mono text-xs text-right pr-3 text-[#37474F] bg-[#CFD8DC]/30">
+                <td className="py-2 px-3 text-right font-mono font-bold text-slate-800 bg-slate-200/50 border-r border-rose-200 whitespace-nowrap">
                   {grandTotal.t1TotalSalary.toLocaleString()}원
                 </td>
 
                 {/* Tutor 2 Totals */}
-                <td className="px-2 py-2 border-r border-[#CFD8DC] font-mono text-sm text-[#263238]">
+                <td className="py-2 px-2.5 text-center font-mono font-black text-slate-900 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.t2TotalHours}시간
                 </td>
-                <td className="px-2 py-2 border-r border-[#CFD8DC] font-mono text-sm text-right pr-3 text-[#0277BD]">
+                <td className="py-2 px-3 text-right font-mono font-black text-sky-600 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.t2TotalSalary.toLocaleString()}원
                 </td>
-                <td className="px-2 py-2 border-r border-[#CFD8DC] font-mono text-xs text-[#546E7A] bg-[#CFD8DC]/30">
+                <td className="py-2 px-2.5 text-center font-mono text-slate-600 bg-slate-200/50 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.t2TotalHours}시간
                 </td>
-                <td className="px-2 py-2 border-r border-[#B0BEC5] font-mono text-xs text-right pr-3 text-[#37474F] bg-[#CFD8DC]/30">
+                <td className="py-2 px-3 text-right font-mono font-bold text-slate-800 bg-slate-200/50 border-r border-sky-200 whitespace-nowrap">
                   {grandTotal.t2TotalSalary.toLocaleString()}원
                 </td>
 
-                {/* All Combined Totals */}
-                <td className="px-2 py-2 border-r border-[#CFD8DC] font-mono text-sm text-amber-900 bg-amber-100/50">
+                {/* Combined Grand Totals */}
+                <td className="py-2 px-2.5 text-center font-mono font-black text-amber-950 bg-amber-100/70 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.allTotalHours}시간
                 </td>
-                <td className="px-2 py-2 border-r border-[#CFD8DC] font-mono text-sm text-right pr-3 text-red-700 bg-amber-100/50">
+                <td className="py-2 px-3 text-right font-mono font-black text-amber-900 bg-amber-100/70 border-r border-amber-200 whitespace-nowrap">
                   {grandTotal.allTotalSalary.toLocaleString()}원
                 </td>
 
-                <td className="px-2 py-2 bg-amber-100/50"></td>
+                <td className="py-2 px-2 bg-slate-100 text-center"></td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Detailed Week Breakdown Modal */}
+      {/* Detailed Modal */}
       {selectedDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-[#EEEEEE] overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="p-6 bg-[#F5F5F5] border-b border-[#EEEEEE] flex items-center justify-between">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
               <div>
-                <h4 className="text-base font-black text-[#37474F]">
-                  {selectedYear}년 {selectedDetail.month}월 주차별 근무시간 상세 내역
+                <h4 className="text-sm font-black text-slate-800">
+                  {selectedYear}년 {selectedDetail.month}월 주차별 근무시간 상세
                 </h4>
-                <p className="text-xs font-bold text-[#78909C] mt-0.5">
-                  선생님별 주당 한도(최대 14시간) 및 월간 한도(최대 60시간) 적용 상세
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  선생님별 주당 한도(최대 14시간) 및 월간 한도(최대 60시간) 적용 내역
                 </p>
               </div>
               <button
                 onClick={() => setSelectedDetail(null)}
-                className="p-2 hover:bg-[#EEEEEE] rounded-full text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-1.5 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-6">
-              {/* Tutor switch tab inside modal */}
-              <div className="flex gap-2 p-1 bg-[#ECEFF1] rounded-2xl w-fit">
-                {[tutor1, tutor2].map(t => {
+            <div className="p-5 overflow-y-auto space-y-5">
+              {/* Tutor switch tabs */}
+              <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+                {activeTutors.map(t => {
                   const mData = reportData.find(r => r.month === selectedDetail.month);
                   const isCur = selectedDetail.tutor.id === t.id;
                   return (
@@ -604,8 +646,8 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
                         stats: mData?.tutorStats[t.id]!
                       })}
                       className={cn(
-                        "px-4 py-2 rounded-xl text-xs font-black transition-all",
-                        isCur ? "bg-[#37474F] text-white shadow-xs" : "text-[#546E7A] hover:bg-white/60"
+                        "px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer",
+                        isCur ? "bg-white text-slate-800 shadow-xs" : "text-slate-500 hover:text-slate-800"
                       )}
                     >
                       {t.name}
@@ -614,58 +656,58 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
                 })}
               </div>
 
-              {/* Monthly Summary Box */}
-              <div className="grid grid-cols-3 gap-3 p-4 bg-[#F9FBE7] rounded-2xl border border-[#E6EE9C]">
+              {/* Monthly Stats Capsule */}
+              <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
                 <div>
-                  <span className="text-[10px] font-bold text-[#827717]">실제 총 근무시간</span>
-                  <p className="text-base font-black text-[#33691E]">{selectedDetail.stats.rawHours}시간</p>
+                  <span className="text-[11px] font-bold text-slate-400">실제 총 근무시간</span>
+                  <p className="text-base font-black text-slate-700 mt-0.5">{selectedDetail.stats.rawHours}시간</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-[#827717]">인정 근무시간 (상한적용)</span>
-                  <p className="text-base font-black text-[#33691E]">{selectedDetail.stats.payableHours}시간</p>
+                  <span className="text-[11px] font-bold text-blue-600">인정 근무시간 (상한적용)</span>
+                  <p className="text-base font-black text-blue-700 mt-0.5">{selectedDetail.stats.payableHours}시간</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-[#827717]">해당 월 급여 (3만원/시)</span>
-                  <p className="text-base font-black text-[#1B5E20]">{selectedDetail.stats.salary.toLocaleString()}원</p>
+                  <span className="text-[11px] font-bold text-emerald-600">해당 월 급여 (3만원/시)</span>
+                  <p className="text-base font-black text-emerald-700 mt-0.5">{selectedDetail.stats.salary.toLocaleString()}원</p>
                 </div>
               </div>
 
               {/* Week-by-Week List */}
-              <div className="space-y-3">
-                <h5 className="text-xs font-black text-[#455A64]">주차별 일자 및 교시 내역</h5>
+              <div className="space-y-2.5">
+                <h5 className="text-xs font-black text-slate-700">주차별 일자 및 교시 내역</h5>
                 {selectedDetail.stats.weekBreakdown.map((wb, wIdx) => (
-                  <div key={wIdx} className="p-4 bg-[#FAFAFA] rounded-2xl border border-[#EEEEEE] space-y-2">
+                  <div key={wIdx} className="p-3.5 bg-slate-50/60 rounded-xl border border-slate-200 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-[#37474F] flex items-center gap-1.5">
-                        <Calendar size={14} className="text-[#78909C]" />
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <Calendar size={13} className="text-slate-400" />
                         {wb.weekLabel} (주 {wIdx + 1}차)
                       </span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-[#546E7A]">
-                          주간 합계: {wb.rawHours}시간
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-mono font-bold text-slate-600">
+                          {wb.rawHours}시간
                         </span>
                         {wb.rawHours > MAX_WEEKLY_HOURS ? (
-                          <span className="text-[10px] px-2 py-0.5 bg-red-100 text-red-700 font-bold rounded-lg">
-                            최대 14시간 인정 ({wb.rawHours - 14}시간 초과)
+                          <span className="text-[10px] px-1.5 py-0.5 bg-rose-100 text-rose-700 font-bold rounded">
+                            주 14시간 인정
                           </span>
                         ) : (
-                          <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded-lg">
-                            정상 인정 ({wb.cappedHours}시간)
+                          <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 font-bold rounded">
+                            정상
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-5 gap-1.5 pt-2 border-t border-[#EEEEEE]">
+                    <div className="grid grid-cols-5 gap-1.5 pt-1.5 border-t border-slate-200">
                       {wb.days.map((d, dIdx) => (
                         <div key={dIdx} className={cn(
-                          "p-2 rounded-xl text-center border text-xs",
-                          d.hours > 0 ? "bg-white border-[#CFD8DC] text-[#263238]" : "bg-transparent border-dashed border-[#EEEEEE] text-[#B0BEC5]"
+                          "p-1.5 rounded-lg text-center border text-xs",
+                          d.hours > 0 ? "bg-white border-slate-200 text-slate-800" : "bg-transparent border-dashed border-slate-200 text-slate-300"
                         )}>
-                          <p className="text-[10px] font-bold text-[#78909C]">{d.date.slice(5)} ({d.dayName})</p>
+                          <p className="text-[10px] font-bold text-slate-500">{d.date.slice(5)} ({d.dayName})</p>
                           <p className="font-black mt-0.5 text-xs">{d.hours}시간</p>
                           {d.periods.length > 0 && (
-                            <p className="text-[9px] text-[#90A4AE] font-mono mt-0.5">
+                            <p className="text-[9px] text-slate-400 font-mono mt-0.5">
                               {d.periods.join(',')}교시
                             </p>
                           )}
@@ -677,10 +719,10 @@ export default function TutorSalaryReport({ tutors, reservations = [] }: TutorSa
               </div>
             </div>
 
-            <div className="p-4 bg-[#F5F5F5] border-t border-[#EEEEEE] flex justify-end">
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
               <button
                 onClick={() => setSelectedDetail(null)}
-                className="px-6 py-2.5 bg-[#37474F] hover:bg-[#263238] text-white text-xs font-bold rounded-xl"
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl cursor-pointer"
               >
                 닫기
               </button>
