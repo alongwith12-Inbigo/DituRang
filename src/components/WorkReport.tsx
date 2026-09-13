@@ -106,6 +106,8 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
         const classPart = firstRes.classInfo ? `${firstRes.classInfo} ` : '';
         const subjectPart = firstRes.subjectInfo ? `${firstRes.subjectInfo} ` : '';
         firstSummary = `${classPart}${subjectPart}수업 보조`.trim();
+      } else if (firstRes.category === "'찾아가는 디지털 튜터' 신청") {
+        firstSummary = firstRes.otherDetail ? `'찾아가는 디지털 튜터' (${firstRes.otherDetail})` : "'찾아가는 디지털 튜터' 지원";
       } else {
         // Priority: otherDetail (구체적인 지원 내용) -> reason (지원 사유)
         firstSummary = firstRes.otherDetail || firstRes.reason || "정보부 업무 보조";
@@ -119,6 +121,8 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
         const classPart = r.classInfo ? `${r.classInfo} ` : '';
         const subjectPart = r.subjectInfo ? `${r.subjectInfo} ` : '';
         return `${classPart}${subjectPart}수업 보조`.trim();
+      } else if (r.category === "'찾아가는 디지털 튜터' 신청") {
+        return r.otherDetail ? `'찾아가는 디지털 튜터' (${r.otherDetail})` : "'찾아가는 디지털 튜터' 지원";
       }
       return r.otherDetail || r.reason || "정보부 업무 보조";
     }));

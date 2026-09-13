@@ -40,7 +40,8 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
     '수업 직접 보조',
     '기기 활용법 안내',
     '프로그램 활용법 안내',
-    '각종 디지털 관련 업무 지원'
+    '각종 디지털 관련 업무 지원',
+    "'찾아가는 디지털 튜터' 신청"
   ];
 
   const getWeekStart = (date: string) => {
@@ -64,7 +65,9 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
       const baseReason = `수업보조: ${classInfo} ${subjectInfo} ${locationInfo ? `(${locationInfo})` : ''}`.trim();
       finalReason = otherDetail ? `${baseReason} - ${otherDetail}` : baseReason;
     } else if (category === '각종 디지털 관련 업무 지원') {
-      finalReason = otherDetail;
+      finalReason = otherDetail || category;
+    } else if (category === "'찾아가는 디지털 튜터' 신청") {
+      finalReason = otherDetail ? `'찾아가는 디지털 튜터' (${otherDetail})` : "'찾아가는 디지털 튜터' 신청";
     }
 
     setIsSubmitting(true);
@@ -79,7 +82,7 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
           classInfo: category === '수업 직접 보조' ? classInfo : null,
           subjectInfo: category === '수업 직접 보조' ? subjectInfo : null,
           locationInfo: category === '수업 직접 보조' ? locationInfo : null,
-          otherDetail: (category === '수업 직접 보조' || category === '각종 디지털 관련 업무 지원') ? otherDetail : null,
+          otherDetail: (category === '수업 직접 보조' || category === '각종 디지털 관련 업무 지원' || category === "'찾아가는 디지털 튜터' 신청") ? otherDetail : null,
           updatedAt: serverTimestamp()
         });
         alert("예약이 수정되었습니다.");
@@ -145,7 +148,7 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
           classInfo: category === '수업 직접 보조' ? classInfo : null,
           subjectInfo: category === '수업 직접 보조' ? subjectInfo : null,
           locationInfo: category === '수업 직접 보조' ? locationInfo : null,
-          otherDetail: (category === '수업 직접 보조' || category === '각종 디지털 관련 업무 지원') ? otherDetail : null,
+          otherDetail: (category === '수업 직접 보조' || category === '각종 디지털 관련 업무 지원' || category === "'찾아가는 디지털 튜터' 신청") ? otherDetail : null,
           type: 'normal',
           recurrenceId,
           createdAt: serverTimestamp()
@@ -287,6 +290,19 @@ export default function ReservationModal({ tutor, slot, onClose, onSuccess, rese
                 value={otherDetail}
                 onChange={e => setOtherDetail(e.target.value)}
                 placeholder="지원이 필요한 내용을 입력해주세요."
+                disabled={isClosed}
+                className="w-full px-4 py-3 bg-[#FCFBFF] rounded-xl border border-[#F3E5F5] focus:ring-4 focus:ring-[#F3E5F5] outline-none transition-all text-[#4A148C] font-black placeholder-[#D1C4E9] min-h-[80px] resize-none disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
+              />
+            </div>
+          )}
+
+          {category === "'찾아가는 디지털 튜터' 신청" && (
+            <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-1">
+              <label className="text-[12px] font-black text-[#7B1FA2] uppercase tracking-wider ml-1">방문 장소 및 요청 내용 (선택)</label>
+              <textarea 
+                value={otherDetail}
+                onChange={e => setOtherDetail(e.target.value)}
+                placeholder="예: 본관 2층 1교무실, 기기 세팅 및 프로그램 활용 문의 등"
                 disabled={isClosed}
                 className="w-full px-4 py-3 bg-[#FCFBFF] rounded-xl border border-[#F3E5F5] focus:ring-4 focus:ring-[#F3E5F5] outline-none transition-all text-[#4A148C] font-black placeholder-[#D1C4E9] min-h-[80px] resize-none disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-200"
               />
