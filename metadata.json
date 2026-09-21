@@ -2,5 +2,5 @@
   "name": "디지털 튜터 예약 시스템 (DiTu-Rang)",
   "description": "학교용 디지털 튜터 주간 시간표 확인 및 예약 관리 시스템",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

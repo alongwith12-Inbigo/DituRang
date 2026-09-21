@@ -15,11 +15,12 @@ interface ReservationModalProps {
   reservations: Reservation[];
   editReservation?: Reservation;
   closedMonths?: string[];
+  defaultCategory?: string;
 }
 
-export default function ReservationModal({ tutor, slot, onClose, onSuccess, reservations, editReservation, closedMonths }: ReservationModalProps) {
+export default function ReservationModal({ tutor, slot, onClose, onSuccess, reservations, editReservation, closedMonths, defaultCategory }: ReservationModalProps) {
   const [teacherName, setTeacherName] = React.useState(editReservation?.teacherName || '');
-  const [category, setCategory] = React.useState(editReservation?.category || '수업 직접 보조');
+  const [category, setCategory] = React.useState(editReservation?.category || defaultCategory || '수업 직접 보조');
   const [classInfo, setClassInfo] = React.useState(editReservation?.classInfo || '');
   const [subjectInfo, setSubjectInfo] = React.useState(editReservation?.subjectInfo || '');
   const [locationInfo, setLocationInfo] = React.useState(editReservation?.locationInfo || '');

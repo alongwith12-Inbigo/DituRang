@@ -56,6 +56,7 @@ import AdminPanel from './components/AdminPanel';
 import ReservationModal from './components/ReservationModal';
 import WorkReport from './components/WorkReport';
 import PrivacyFilesModal from './components/PrivacyFilesModal';
+import { TutorPoster } from './components/TutorPoster';
 
 export default function App() {
   const [tutors, setTutors] = React.useState<Tutor[]>([]);
@@ -69,6 +70,8 @@ export default function App() {
   const [confirmerName, setConfirmerName] = React.useState('홍길동');
   const [selectedSlot, setSelectedSlot] = React.useState<{ date: string; period: number } | null>(null);
   const [editingReservation, setEditingReservation] = React.useState<Reservation | null>(null);
+  const [defaultBookingCategory, setDefaultBookingCategory] = React.useState<string | undefined>();
+  const [showPoster, setShowPoster] = React.useState(true);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [closedMonths, setClosedMonths] = React.useState<string[]>([]);
@@ -404,74 +407,113 @@ export default function App() {
         "flex-1 overflow-y-auto p-2 lg:p-8 print:p-0 print:overflow-visible",
         isWorkReportOpen && "print:hidden"
       )}>
-        <div ref={printRef} className="max-w-6xl mx-auto flex flex-col gap-3 lg:gap-8 print:max-w-none print:p-0">
-          <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-4 lg:p-8 rounded-[1rem] lg:rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-3 md:gap-4">
-            <div className="flex flex-col gap-0.5 print:items-center print:w-full">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base lg:text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">
-                  {selectedTutor?.name || (isLoading ? '로딩 중...' : '선택된 튜터 없음')} 
-                  <span className="text-[#9575CD] font-bold ml-1 lg:ml-2 print:text-black print:ml-4">주간 시간표</span>
-                </h2>
-              </div>
-              <p className="text-[10px] lg:text-sm font-bold text-[#9575CD] flex items-center gap-1 mt-0.5 print:text-black print:text-sm">
-                <Calendar size={12} className="text-[#9575CD] print:hidden" />
-                {format(currentWeekStart, 'yyyy년 MM월 dd일 (EEE)', { locale: ko })} — {format(addDays(currentWeekStart, 4), 'MM월 dd일 (EEE)', { locale: ko })}
-              </p>
-            </div>
-            
-            <div className="flex bg-white/80 p-2 lg:p-4 rounded-lg lg:rounded-2xl border border-[#F3E5F5]/50 shadow-sm items-center gap-3 print:hidden self-start md:self-auto">
-              <div className="text-right">
-                <p className="text-sm lg:text-lg font-black text-[#673AB7]">
-                  {format(new Date(), 'yyyy. MM. dd.(EEE)', { locale: ko })}
-                </p>
-                <p className="text-[9px] lg:text-[11px] font-bold text-[#A294CC] uppercase tracking-[0.25em] leading-none">오늘</p>
-              </div>
-            </div>
-          </header>
-
-          {/* Legend */}
-          <div className="flex flex-wrap gap-3 lg:gap-4 print:hidden">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
-              <div className={cn("w-4 h-4 rounded-md border", selectedTutor?.id === 'tutor1' ? "bg-[#FFE0E6] border-[#FFD1DA]" : "bg-[#E3F2FF] border-[#D4E9FF]")} />
-              근무 시간
-            </div>
-            <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
-              <div className={cn("w-4 h-4 rounded-md", selectedTutor?.id === 'tutor1' ? "bg-[#FFC1D1]" : "bg-[#B3E5FC]")} />
-              예약 완료
-            </div>
-            <div className="flex items-center gap-2 text-xs font-medium text-[#757575]">
-              <div className={cn("w-4 h-4 rounded-md flex items-center justify-center", selectedTutor?.id === 'tutor1' ? "bg-[#FFF3E0]" : "bg-[#F3E5F5]")}>
-                <Star size={10} className="text-[#FFB300]" fill="currentColor" />
-              </div>
-              수업 직접 보조
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-x-auto -mx-4 px-4 pb-4 lg:mx-0 lg:px-0 lg:pb-0">
-            {selectedTutor ? (
-              <Timetable 
-                tutor={selectedTutor} 
-                reservations={reservations} 
-                schoolEvents={schoolEvents}
-                weekRange={weekRange}
-                closedMonths={closedMonths}
-                onSlotClick={(date, period) => {
-                  setSelectedSlot({ date, period });
-                  setIsBookingOpen(true);
-                }}
-                onReservationClick={(reservation) => {
-                  setEditingReservation(reservation);
-                  setIsBookingOpen(true);
-                }}
-              />
-            ) : (
-              <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[#F3E5F5] rounded-[1.5rem] bg-white/40 h-64 lg:h-auto">
-                <div className="text-center">
-                  <Users className="w-12 h-12 text-[#D1C4E9] mx-auto mb-4 opacity-50" />
-                  <p className="text-[#B39DDB] font-bold">왼쪽에서 튜터를 선택해 주세요.</p>
-                </div>
+        <div ref={printRef} className="max-w-[1780px] mx-auto flex flex-col gap-3 lg:gap-8 print:max-w-none print:p-0">
+          <div className="flex flex-col xl:flex-row items-start gap-5 lg:gap-7">
+            {/* Poster in the space between sidebar and timetable */}
+            {showPoster && (
+              <div className="w-full xl:w-[350px] 2xl:w-[380px] flex-shrink-0 print:hidden transition-all duration-300">
+                <TutorPoster 
+                  onApplyClick={() => {
+                    const todayStr = format(new Date(), 'yyyy-MM-dd');
+                    if (selectedTutor) {
+                      setSelectedSlot({ date: todayStr, period: 1 });
+                    } else if (tutors.length > 0) {
+                      setSelectedTutorId(tutors[0].id);
+                      setSelectedSlot({ date: todayStr, period: 1 });
+                    }
+                    setDefaultBookingCategory("'찾아가는 디지털 튜터' 신청");
+                    setIsBookingOpen(true);
+                  }}
+                />
               </div>
             )}
+
+            {/* Timetable Column shifted to the right */}
+            <div className="flex-1 min-w-0 w-full flex flex-col gap-3 lg:gap-8">
+              <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-4 lg:p-8 rounded-[1rem] lg:rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-3 md:gap-4">
+                <div className="flex flex-col gap-0.5 print:items-center print:w-full">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base lg:text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">
+                      {selectedTutor?.name || (isLoading ? '로딩 중...' : '선택된 튜터 없음')} 
+                      <span className="text-[#9575CD] font-bold ml-1 lg:ml-2 print:text-black print:ml-4">주간 시간표</span>
+                    </h2>
+                  </div>
+                  <p className="text-[10px] lg:text-sm font-bold text-[#9575CD] flex items-center gap-1 mt-0.5 print:text-black print:text-sm">
+                    <Calendar size={12} className="text-[#9575CD] print:hidden" />
+                    {format(currentWeekStart, 'yyyy년 MM월 dd일 (EEE)', { locale: ko })} — {format(addDays(currentWeekStart, 4), 'MM월 dd일 (EEE)', { locale: ko })}
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-2 print:hidden self-start md:self-auto">
+                  <button
+                    onClick={() => setShowPoster(!showPoster)}
+                    className={cn(
+                      "px-3 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer",
+                      showPoster 
+                        ? "bg-[#F3E5F5]/60 text-[#7B1FA2] border-[#E1BEE7] hover:bg-[#F3E5F5]" 
+                        : "bg-white text-[#9C27B0] border-[#BA68C8] shadow-sm hover:bg-[#F3E5F5]/30"
+                    )}
+                    title="찾아가는 디지털 튜터 포스터 표시 여부 토글"
+                  >
+                    <span>{showPoster ? '포스터 접기' : '포스터 펼치기'}</span>
+                  </button>
+
+                  <div className="flex bg-white/80 p-2 lg:p-4 rounded-lg lg:rounded-2xl border border-[#F3E5F5]/50 shadow-sm items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm lg:text-lg font-black text-[#673AB7]">
+                        {format(new Date(), 'yyyy. MM. dd.(EEE)', { locale: ko })}
+                      </p>
+                      <p className="text-[9px] lg:text-[11px] font-bold text-[#A294CC] uppercase tracking-[0.25em] leading-none">오늘</p>
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              {/* Legend */}
+              <div className="flex flex-wrap gap-3 lg:gap-4 print:hidden">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
+                  <div className={cn("w-4 h-4 rounded-md border", selectedTutor?.id === 'tutor1' ? "bg-[#FFE0E6] border-[#FFD1DA]" : "bg-[#E3F2FF] border-[#D4E9FF]")} />
+                  근무 시간
+                </div>
+                <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
+                  <div className={cn("w-4 h-4 rounded-md", selectedTutor?.id === 'tutor1' ? "bg-[#FFC1D1]" : "bg-[#B3E5FC]")} />
+                  예약 완료
+                </div>
+                <div className="flex items-center gap-2 text-xs font-medium text-[#757575]">
+                  <div className={cn("w-4 h-4 rounded-md flex items-center justify-center", selectedTutor?.id === 'tutor1' ? "bg-[#FFF3E0]" : "bg-[#F3E5F5]")}>
+                    <Star size={10} className="text-[#FFB300]" fill="currentColor" />
+                  </div>
+                  수업 직접 보조
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-x-auto -mx-4 px-4 pb-4 lg:mx-0 lg:px-0 lg:pb-0">
+                {selectedTutor ? (
+                  <Timetable 
+                    tutor={selectedTutor} 
+                    reservations={reservations} 
+                    schoolEvents={schoolEvents}
+                    weekRange={weekRange}
+                    closedMonths={closedMonths}
+                    onSlotClick={(date, period) => {
+                      setSelectedSlot({ date, period });
+                      setIsBookingOpen(true);
+                    }}
+                    onReservationClick={(reservation) => {
+                      setEditingReservation(reservation);
+                      setIsBookingOpen(true);
+                    }}
+                  />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[#F3E5F5] rounded-[1.5rem] bg-white/40 h-64 lg:h-auto">
+                    <div className="text-center">
+                      <Users className="w-12 h-12 text-[#D1C4E9] mx-auto mb-4 opacity-50" />
+                      <p className="text-[#B39DDB] font-bold">왼쪽에서 튜터를 선택해 주세요.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -484,15 +526,18 @@ export default function App() {
             slot={selectedSlot || { date: editingReservation?.date || '', period: editingReservation?.period || 0 }}
             editReservation={editingReservation || undefined}
             closedMonths={closedMonths}
+            defaultCategory={defaultBookingCategory}
             onClose={() => {
               setIsBookingOpen(false);
               setSelectedSlot(null);
               setEditingReservation(null);
+              setDefaultBookingCategory(undefined);
             }}
             onSuccess={() => {
               setIsBookingOpen(false);
               setSelectedSlot(null);
               setEditingReservation(null);
+              setDefaultBookingCategory(undefined);
             }}
             reservations={reservations}
           />
