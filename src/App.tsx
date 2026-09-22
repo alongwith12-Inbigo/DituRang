@@ -57,6 +57,7 @@ import ReservationModal from './components/ReservationModal';
 import WorkReport from './components/WorkReport';
 import PrivacyFilesModal from './components/PrivacyFilesModal';
 import { TutorPoster } from './components/TutorPoster';
+import { findEarliestAvailableSlot } from './lib/slotUtils';
 
 export default function App() {
   const [tutors, setTutors] = React.useState<Tutor[]>([]);
@@ -492,27 +493,11 @@ export default function App() {
                     if (kwonTutor) {
                       setSelectedTutorId(kwonTutor.id);
 
-                      // 가장 가까운 근무일 및 근무 교시 탐색
-                      let targetDateStr = format(new Date(), 'yyyy-MM-dd');
-                      let targetPeriod = 1;
-                      const today = startOfToday();
+                      // 현재 시각 및 기예약 여부를 반영하여 가장 빠른 예약 가능 슬롯 탐색
+                      const earliest = findEarliestAvailableSlot(kwonTutor, reservations, closedMonths);
+                      const targetSlot = earliest || { date: format(new Date(), 'yyyy-MM-dd'), period: 1 };
 
-                      for (let offset = 0; offset < 14; offset++) {
-                        const candidate = addDays(today, offset);
-                        const dayIdx = (candidate.getDay() + 6) % 7;
-                        if (dayIdx >= 0 && dayIdx < 5) {
-                          const mon = format(addDays(candidate, -((candidate.getDay() + 6) % 7)), 'yyyy-MM-dd');
-                          const candidateStr = format(candidate, 'yyyy-MM-dd');
-                          const periods = kwonTutor.weekOverrides?.[mon]?.[dayIdx] ?? kwonTutor.workSchedule?.[dayIdx] ?? [];
-                          if (periods.length > 0) {
-                            targetDateStr = candidateStr;
-                            targetPeriod = periods[0];
-                            break;
-                          }
-                        }
-                      }
-
-                      setSelectedSlot({ date: targetDateStr, period: targetPeriod });
+                      setSelectedSlot(targetSlot);
                     }
                     setDefaultBookingCategory("'찾아가는 디지털 튜터' 신청");
                     setIsBookingOpen(true);
