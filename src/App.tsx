@@ -81,6 +81,10 @@ export default function App() {
   const printRef = React.useRef<HTMLDivElement>(null);
 
   const selectedTutor = tutors.find(t => t.id === selectedTutorId);
+  const isYoonTutor = Boolean(selectedTutor?.name?.includes('윤채하') || selectedTutor?.id === 'tutor2');
+  const isKwonTutor = Boolean((selectedTutor?.name?.includes('권나현') || selectedTutor?.id === 'tutor1') && !isYoonTutor);
+  const shouldShowPoster = showPoster && !isYoonTutor && isKwonTutor;
+
   const currentWeekStart = startOfWeek(addWeeks(startOfToday(), selectedWeekOffset), { weekStartsOn: 1 });
 
   const handlePrint = () => {
@@ -404,22 +408,111 @@ export default function App() {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 overflow-y-auto p-2 lg:p-8 print:p-0 print:overflow-visible",
+        "flex-1 overflow-y-auto print:p-0 print:overflow-visible transition-all duration-300 p-3 sm:p-5 lg:p-6 xl:px-10",
         isWorkReportOpen && "print:hidden"
       )}>
-        <div ref={printRef} className="max-w-[1780px] mx-auto flex flex-col gap-3 lg:gap-8 print:max-w-none print:p-0">
-          <div className="flex flex-col xl:flex-row items-start gap-5 lg:gap-7">
-            {/* Poster in the space between sidebar and timetable */}
-            {showPoster && (
-              <div className="w-full xl:w-[350px] 2xl:w-[380px] flex-shrink-0 print:hidden transition-all duration-300">
+        <div 
+          ref={printRef} 
+          className={cn(
+            "mx-auto flex flex-col gap-3 lg:gap-5 print:max-w-none print:p-0 transition-all duration-300 w-full",
+            shouldShowPoster 
+              ? "max-w-[1460px] 2xl:max-w-[1520px]" 
+              : "max-w-[1340px] 2xl:max-w-[1380px]"
+          )}
+        >
+          {/* Header at Top: Spans full width of container for all tutors */}
+          <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-4 lg:p-6 rounded-[1rem] lg:rounded-[2rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-3 md:gap-4 w-full">
+            <div className="flex flex-col gap-0.5 print:items-center print:w-full">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base lg:text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">
+                  {selectedTutor?.name || (isLoading ? '로딩 중...' : '선택된 튜터 없음')} 
+                  <span className="text-[#9575CD] font-bold ml-1 lg:ml-2 print:text-black print:ml-4">주간 시간표</span>
+                </h2>
+              </div>
+              <p className="text-[10px] lg:text-sm font-bold text-[#9575CD] flex items-center gap-1 mt-0.5 print:text-black print:text-sm">
+                <Calendar size={12} className="text-[#9575CD] print:hidden" />
+                {format(currentWeekStart, 'yyyy년 MM월 dd일 (EEE)', { locale: ko })} — {format(addDays(currentWeekStart, 4), 'MM월 dd일 (EEE)', { locale: ko })}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 print:hidden self-start md:self-auto">
+              {/* 포스터 표시 토글 버튼은 권나현 선생님 시간표일 때만 표시 */}
+              {isKwonTutor && (
+                <button
+                  onClick={() => setShowPoster(!showPoster)}
+                  className={cn(
+                    "px-3 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer",
+                    showPoster 
+                      ? "bg-[#F3E5F5]/60 text-[#7B1FA2] border-[#E1BEE7] hover:bg-[#F3E5F5]" 
+                      : "bg-white text-[#9C27B0] border-[#BA68C8] shadow-sm hover:bg-[#F3E5F5]/30"
+                  )}
+                  title="찾아가는 디지털 튜터 포스터 표시 여부 토글"
+                >
+                  <span>{showPoster ? '포스터 접기' : '포스터 펼치기'}</span>
+                </button>
+              )}
+
+              <div className="flex bg-white/80 p-2 lg:p-3.5 rounded-lg lg:rounded-2xl border border-[#F3E5F5]/50 shadow-sm items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm lg:text-base font-black text-[#673AB7]">
+                    {format(new Date(), 'yyyy. MM. dd.(EEE)', { locale: ko })}
+                  </p>
+                  <p className="text-[9px] lg:text-[10px] font-bold text-[#A294CC] uppercase tracking-[0.25em] leading-none">오늘</p>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Legend */}
+          <div className="flex flex-wrap gap-3 lg:gap-4 print:hidden px-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
+              <div className={cn("w-4 h-4 rounded-md border", selectedTutor?.id === 'tutor1' ? "bg-[#FFE0E6] border-[#FFD1DA]" : "bg-[#E3F2FF] border-[#D4E9FF]")} />
+              근무 시간
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
+              <div className={cn("w-4 h-4 rounded-md", selectedTutor?.id === 'tutor1' ? "bg-[#FFC1D1]" : "bg-[#B3E5FC]")} />
+              예약 완료
+            </div>
+            <div className="flex items-center gap-2 text-xs font-medium text-[#757575]">
+              <div className={cn("w-4 h-4 rounded-md flex items-center justify-center", selectedTutor?.id === 'tutor1' ? "bg-[#FFF3E0]" : "bg-[#F3E5F5]")}>
+                <Star size={10} className="text-[#FFB300]" fill="currentColor" />
+              </div>
+              수업 직접 보조
+            </div>
+          </div>
+
+          {/* Timetable Row: Starts horizontally at the table height */}
+          <div className="flex flex-col xl:flex-row items-start gap-4 lg:gap-6 w-full">
+            {/* Poster in the side space (Only for 권나현 선생님, starts aligned with timetable table) */}
+            {shouldShowPoster && (
+              <div className="w-full xl:w-[330px] 2xl:w-[355px] flex-shrink-0 print:hidden transition-all duration-300">
                 <TutorPoster 
                   onApplyClick={() => {
-                    const todayStr = format(new Date(), 'yyyy-MM-dd');
-                    if (selectedTutor) {
-                      setSelectedSlot({ date: todayStr, period: 1 });
-                    } else if (tutors.length > 0) {
-                      setSelectedTutorId(tutors[0].id);
-                      setSelectedSlot({ date: todayStr, period: 1 });
+                    const kwonTutor = tutors.find(t => t.name?.includes('권나현') || t.id === 'tutor1') || tutors.find(t => !t.name?.includes('윤채하')) || tutors[0];
+                    if (kwonTutor) {
+                      setSelectedTutorId(kwonTutor.id);
+
+                      // 가장 가까운 근무일 및 근무 교시 탐색
+                      let targetDateStr = format(new Date(), 'yyyy-MM-dd');
+                      let targetPeriod = 1;
+                      const today = startOfToday();
+
+                      for (let offset = 0; offset < 14; offset++) {
+                        const candidate = addDays(today, offset);
+                        const dayIdx = (candidate.getDay() + 6) % 7;
+                        if (dayIdx >= 0 && dayIdx < 5) {
+                          const mon = format(addDays(candidate, -((candidate.getDay() + 6) % 7)), 'yyyy-MM-dd');
+                          const candidateStr = format(candidate, 'yyyy-MM-dd');
+                          const periods = kwonTutor.weekOverrides?.[mon]?.[dayIdx] ?? kwonTutor.workSchedule?.[dayIdx] ?? [];
+                          if (periods.length > 0) {
+                            targetDateStr = candidateStr;
+                            targetPeriod = periods[0];
+                            break;
+                          }
+                        }
+                      }
+
+                      setSelectedSlot({ date: targetDateStr, period: targetPeriod });
                     }
                     setDefaultBookingCategory("'찾아가는 디지털 튜터' 신청");
                     setIsBookingOpen(true);
@@ -428,66 +521,9 @@ export default function App() {
               </div>
             )}
 
-            {/* Timetable Column shifted to the right */}
-            <div className="flex-1 min-w-0 w-full flex flex-col gap-3 lg:gap-8">
-              <header className="flex flex-col md:flex-row md:items-end justify-between print:flex print:items-center print:justify-center print:border-b-2 print:border-black print:pb-4 print:mb-8 bg-white/60 p-4 lg:p-8 rounded-[1rem] lg:rounded-[2.5rem] border border-white shadow-xl shadow-purple-100/5 backdrop-blur-md gap-3 md:gap-4">
-                <div className="flex flex-col gap-0.5 print:items-center print:w-full">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base lg:text-xl font-black text-[#5E35B1] tracking-tight print:text-3xl print:text-black">
-                      {selectedTutor?.name || (isLoading ? '로딩 중...' : '선택된 튜터 없음')} 
-                      <span className="text-[#9575CD] font-bold ml-1 lg:ml-2 print:text-black print:ml-4">주간 시간표</span>
-                    </h2>
-                  </div>
-                  <p className="text-[10px] lg:text-sm font-bold text-[#9575CD] flex items-center gap-1 mt-0.5 print:text-black print:text-sm">
-                    <Calendar size={12} className="text-[#9575CD] print:hidden" />
-                    {format(currentWeekStart, 'yyyy년 MM월 dd일 (EEE)', { locale: ko })} — {format(addDays(currentWeekStart, 4), 'MM월 dd일 (EEE)', { locale: ko })}
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-2 print:hidden self-start md:self-auto">
-                  <button
-                    onClick={() => setShowPoster(!showPoster)}
-                    className={cn(
-                      "px-3 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer",
-                      showPoster 
-                        ? "bg-[#F3E5F5]/60 text-[#7B1FA2] border-[#E1BEE7] hover:bg-[#F3E5F5]" 
-                        : "bg-white text-[#9C27B0] border-[#BA68C8] shadow-sm hover:bg-[#F3E5F5]/30"
-                    )}
-                    title="찾아가는 디지털 튜터 포스터 표시 여부 토글"
-                  >
-                    <span>{showPoster ? '포스터 접기' : '포스터 펼치기'}</span>
-                  </button>
-
-                  <div className="flex bg-white/80 p-2 lg:p-4 rounded-lg lg:rounded-2xl border border-[#F3E5F5]/50 shadow-sm items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-sm lg:text-lg font-black text-[#673AB7]">
-                        {format(new Date(), 'yyyy. MM. dd.(EEE)', { locale: ko })}
-                      </p>
-                      <p className="text-[9px] lg:text-[11px] font-bold text-[#A294CC] uppercase tracking-[0.25em] leading-none">오늘</p>
-                    </div>
-                  </div>
-                </div>
-              </header>
-
-              {/* Legend */}
-              <div className="flex flex-wrap gap-3 lg:gap-4 print:hidden">
-                <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
-                  <div className={cn("w-4 h-4 rounded-md border", selectedTutor?.id === 'tutor1' ? "bg-[#FFE0E6] border-[#FFD1DA]" : "bg-[#E3F2FF] border-[#D4E9FF]")} />
-                  근무 시간
-                </div>
-                <div className="flex items-center gap-2 text-xs font-bold text-[#424242]">
-                  <div className={cn("w-4 h-4 rounded-md", selectedTutor?.id === 'tutor1' ? "bg-[#FFC1D1]" : "bg-[#B3E5FC]")} />
-                  예약 완료
-                </div>
-                <div className="flex items-center gap-2 text-xs font-medium text-[#757575]">
-                  <div className={cn("w-4 h-4 rounded-md flex items-center justify-center", selectedTutor?.id === 'tutor1' ? "bg-[#FFF3E0]" : "bg-[#F3E5F5]")}>
-                    <Star size={10} className="text-[#FFB300]" fill="currentColor" />
-                  </div>
-                  수업 직접 보조
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-x-auto -mx-4 px-4 pb-4 lg:mx-0 lg:px-0 lg:pb-0">
+            {/* Timetable Table */}
+            <div className="flex-1 min-w-0 w-full">
+              <div className="overflow-x-auto -mx-4 px-4 pb-4 lg:mx-0 lg:px-0 lg:pb-0">
                 {selectedTutor ? (
                   <Timetable 
                     tutor={selectedTutor} 

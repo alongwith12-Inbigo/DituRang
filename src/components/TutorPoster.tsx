@@ -63,7 +63,7 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
   const checklistItems = [
     'AI가 만들어준 이미지에 글자 수정',
     '포스터에 QR 코드 넣기',
-    '아이들 얼굴 블러 처리',
+    '학생들 얼굴 블러 처리',
     '구글 시트 · 설문지 만들기',
     '한글 문서에 넣을 내 서명 이미지 만들기',
     '그 외 다양한 디지털 도구 활용'
@@ -88,7 +88,7 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
         <div className="bg-[#361e0e] px-3 py-1.5 flex items-center justify-between text-[11px] text-[#decab2] border-b border-[#261408]">
           <span className="font-bold flex items-center gap-1.5 font-['Gowun_Dodum',sans-serif]">
             <Sparkles size={12} className="text-yellow-400" />
-            찾아가는 디지털 튜터 안내판
+            디지털 튜터 안내판
           </span>
           <div className="flex items-center gap-1.5">
             <input 
@@ -116,14 +116,14 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
               className="hover:text-white p-1 rounded bg-[#4e2912] hover:bg-[#613417] text-[10px] px-1.5 py-0.5 transition-colors flex items-center gap-1"
             >
               <Upload size={10} />
-              <span>{customImage ? '이미지 변경' : '이미지 올리기'}</span>
+              <span>{customImage ? '변경' : '올리기'}</span>
             </button>
             <button 
               onClick={() => setIsModalOpen(true)}
               title="칠판 크게 보기"
               className="hover:text-white p-1 rounded hover:bg-[#4e2912] transition-colors"
             >
-              <Maximize2 size={13} />
+              <Maximize2 size={12} />
             </button>
           </div>
         </div>
@@ -131,8 +131,8 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
         {/* Drag Overlay */}
         {isDragOver && (
           <div className="absolute inset-0 bg-black/75 z-30 flex flex-col items-center justify-center text-white gap-2 p-4 text-center">
-            <Upload size={36} className="text-yellow-400 animate-bounce" />
-            <p className="font-black text-sm">포스터 이미지를 여기에 놓으세요</p>
+            <Upload size={32} className="text-yellow-400 animate-bounce" />
+            <p className="font-black text-xs sm:text-sm">포스터 이미지를 여기에 놓으세요</p>
           </div>
         )}
 
@@ -143,44 +143,28 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
               src={customImage} 
               alt="찾아가는 디지털 튜터 포스터" 
               referrerPolicy="no-referrer"
-              className="w-full h-auto object-contain max-h-[800px]"
+              className="w-full h-auto object-contain max-h-[850px]"
             />
           </div>
         ) : (
-          <div className="relative p-5 sm:p-6 flex flex-col justify-between text-white select-none bg-[#193a29]">
-            {/* School Header */}
-            <div className="text-center relative z-10 mb-3 pb-2.5 border-b border-white/15">
-              <p 
-                className="text-[13px] sm:text-[14px] font-bold text-[#E6F4EA] tracking-wider"
-                style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
-              >
-                인천비즈니스고등학교
-              </p>
-              <p 
-                className="text-[11px] sm:text-[12px] font-semibold text-[#A7F3D0] tracking-normal mt-0.5"
-                style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
-              >
-                2026 AI · 디지털 활용 선도학교
-              </p>
-            </div>
-
+          <div className="relative p-4 sm:p-5 flex flex-col justify-between text-white select-none bg-[#193a29]">
             {/* Main Chalkboard Title */}
-            <div className="text-center relative z-10 my-1">
+            <div className="text-center relative z-10 pt-2 pb-1 my-1">
               <p 
-                className="text-2xl sm:text-[28px] font-bold text-white tracking-widest mb-1.5"
+                className="text-xl sm:text-2xl font-black text-white tracking-[0.3em] mb-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
                 style={{ fontFamily: "'Gaegu', 'Gowun Dodum', cursive, sans-serif" }}
               >
                 찾 아 가 는
               </p>
-              <div className="flex items-center justify-center gap-2 sm:gap-2.5">
+              <div className="flex items-center justify-center gap-2.5">
                 <span 
-                  className="text-4xl sm:text-[42px] font-extrabold text-[#7DD3FC] tracking-wide"
+                  className="text-4xl sm:text-[44px] font-black text-[#7DD3FC] tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]"
                   style={{ fontFamily: "'Gaegu', 'Gowun Dodum', cursive, sans-serif" }}
                 >
                   디지털
                 </span>
                 <span 
-                  className="text-4xl sm:text-[42px] font-extrabold text-[#F472B6] tracking-wide"
+                  className="text-4xl sm:text-[44px] font-black text-[#F472B6] tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.7)]"
                   style={{ fontFamily: "'Gaegu', 'Gowun Dodum', cursive, sans-serif" }}
                 >
                   튜터
@@ -189,28 +173,28 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
             </div>
 
             {/* Clean Slogan (No blur, no glow, crisp & sharp) */}
-            <div className="text-center relative z-10 my-3 py-2 px-3 rounded-lg border border-[#2d563e] bg-[#112a1d]">
+            <div className="text-center relative z-10 my-2.5 py-2 px-3 rounded-xl border border-[#2d563e] bg-[#112a1d]">
               <p 
-                className="text-xs sm:text-[13px] font-bold text-[#FDE047] tracking-tight"
+                className="text-[12px] font-bold text-[#FDE047] tracking-tight"
                 style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
               >
                 필요한 순간, 필요한 기능만
               </p>
               <p 
-                className="text-sm sm:text-[15px] font-bold text-white tracking-tight mt-0.5"
+                className="text-[13px] sm:text-[14px] font-bold text-white tracking-tight mt-0.5"
                 style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
               >
                 바로, 옆에서 도와드립니다!
               </p>
             </div>
 
-            {/* 6 Checklist Items (Crisp Chalk Style - No Glow) */}
-            <div className="relative z-10 my-2 bg-[#112a1d] p-3.5 sm:p-4 rounded-xl border border-[#2d563e]">
+            {/* 6 Checklist Items (Crisp Chalk Style) */}
+            <div className="relative z-10 my-2 bg-[#112a1d] p-3 sm:p-3.5 rounded-xl border border-[#2d563e]">
               <div className="flex flex-col gap-2.5">
                 {checklistItems.map((item, idx) => (
                   <div key={idx} className="flex items-center gap-2.5">
-                    <div className="w-4 h-4 rounded-sm border border-[#F472B6] bg-[#F472B6]/10 flex items-center justify-center flex-shrink-0">
-                      <Check size={12} className="text-[#F472B6] stroke-[3]" />
+                    <div className="w-4 h-4 rounded-xs border border-[#F472B6] bg-[#F472B6]/15 flex items-center justify-center flex-shrink-0">
+                      <Check size={11} className="text-[#F472B6] stroke-[3]" />
                     </div>
                     <span 
                       className="text-[12px] sm:text-[13px] font-medium text-white tracking-tight leading-snug"
@@ -224,26 +208,26 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
             </div>
 
             {/* Bottom Action Area: Crisp "신청 바로가기" button */}
-            <div className="relative z-10 mt-3 pt-3 border-t border-white/15 flex flex-col items-center">
+            <div className="relative z-10 mt-3 pt-2.5 border-t border-white/15 flex flex-col items-center gap-1.5">
               <button 
                 type="button"
                 onClick={onApplyClick}
-                className="w-full group flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#E11D48] hover:bg-[#BE123C] text-white font-bold text-sm sm:text-base tracking-wide shadow-md border border-[#FB7185] transition-all duration-150 transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                className="w-full group flex items-center justify-center gap-2 py-2.5 sm:py-3 px-4 rounded-xl bg-[#E11D48] hover:bg-[#BE123C] text-white font-bold text-xs sm:text-sm tracking-wide shadow-md border border-[#FB7185] transition-all duration-150 transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
-                <CalendarCheck2 size={18} className="text-white" />
+                <CalendarCheck2 size={16} className="text-white" />
                 <span 
                   className="font-bold tracking-wider"
                   style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
                 >
                   신청 바로가기
                 </span>
-                <ArrowRight size={18} className="text-white group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight size={15} className="text-white group-hover:translate-x-0.5 transition-transform" />
               </button>
               <p 
-                className="text-[11px] text-[#A7F3D0] font-medium mt-1.5"
+                className="text-[11px] text-[#A7F3D0] font-medium"
                 style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
               >
-                원하는 시간에 1:1 맞춤 지원을 신청하세요
+                원하는 시간에 1:1 맞춤 지원 신청
               </p>
             </div>
 
@@ -252,7 +236,7 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
               className="text-center mt-3 pt-2 text-[11px] font-medium text-[#A7F3D0] tracking-wider border-t border-dashed border-white/15"
               style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
             >
-              인천비즈니스고등학교 <span className="mx-1">|</span> 교육정보부
+              인천비즈니스고등학교 <span className="mx-0.5">|</span> 교육정보부
             </div>
 
             {/* Chalk tray details on bottom wooden frame */}
@@ -264,7 +248,7 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
                 <div className="w-6 h-2 rounded-xs bg-[#7DD3FC] shadow-xs" title="하늘색 분필" />
               </div>
               <div className="flex items-center" title="칠판 지우개">
-                <div className="w-9 h-3.5 bg-[#3E2723] rounded-xs border-b-2 border-[#8D6E63] shadow-xs" />
+                <div className="w-8 h-3.5 bg-[#3E2723] rounded-xs border-b-2 border-[#8D6E63] shadow-xs" />
               </div>
             </div>
           </div>
@@ -304,37 +288,22 @@ export const TutorPoster: React.FC<TutorPosterProps> = ({ onApplyClick, classNam
                 />
               ) : (
                 <div className="p-6 sm:p-8 rounded-xl border border-[#2d563e] bg-[#193a29] text-white">
-                  <div className="text-center pb-3 border-b border-white/15 mb-4">
+                  <div className="text-center my-3 pt-1">
                     <p 
-                      className="text-base font-bold text-[#E6F4EA] tracking-wider"
-                      style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
-                    >
-                      인천비즈니스고등학교
-                    </p>
-                    <p 
-                      className="text-xs font-semibold text-[#A7F3D0] mt-0.5"
-                      style={{ fontFamily: "'Gowun Dodum', sans-serif" }}
-                    >
-                      2026 AI · 디지털 활용 선도학교
-                    </p>
-                  </div>
-
-                  <div className="text-center my-3">
-                    <p 
-                      className="text-3xl font-bold text-white tracking-widest mb-2"
+                      className="text-2xl sm:text-3xl font-black text-white tracking-[0.35em] mb-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
                       style={{ fontFamily: "'Gaegu', 'Gowun Dodum', cursive, sans-serif" }}
                     >
                       찾 아 가 는
                     </p>
-                    <div className="flex items-center justify-center gap-3">
+                    <div className="flex items-center justify-center gap-4">
                       <span 
-                        className="text-5xl font-extrabold text-[#7DD3FC]"
+                        className="text-5xl sm:text-6xl font-black text-[#7DD3FC] tracking-wider drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]"
                         style={{ fontFamily: "'Gaegu', 'Gowun Dodum', cursive, sans-serif" }}
                       >
                         디지털
                       </span>
                       <span 
-                        className="text-5xl font-extrabold text-[#F472B6]"
+                        className="text-5xl sm:text-6xl font-black text-[#F472B6] tracking-wider drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]"
                         style={{ fontFamily: "'Gaegu', 'Gowun Dodum', cursive, sans-serif" }}
                       >
                         튜터
