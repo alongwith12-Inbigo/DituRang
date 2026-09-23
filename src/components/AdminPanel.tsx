@@ -489,7 +489,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                   activeTab === 'salary' ? "bg-purple-600 text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
                 )}
               >
-                <Coins size={14} /> 튜터 월급 계산 (예산 22,848,000원)
+                <Coins size={14} /> 튜터 월급 계산 (예산 22,680,000원 · 756시간)
               </button>
               <button 
                 onClick={() => setActiveTab('calendar')}
