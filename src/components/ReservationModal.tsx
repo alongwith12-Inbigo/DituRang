@@ -8,11 +8,8 @@ import { db } from '../lib/firebase';
 import { Tutor, Reservation, DAYS, ALL_PERIODS, LUNCH_PERIOD, getPeriodLabel, comparePeriods } from '../types';
 import { cn } from '../lib/utils';
 import { 
-  isPeriodInPast, 
   isTutorScheduled, 
   isSlotBooked, 
-  isSlotAvailable, 
-  findEarliestAvailableSlot,
   PERIOD_START_TIMES
 } from '../lib/slotUtils';
 
@@ -26,6 +23,7 @@ export const TUTOR_REQUEST_TOPICS = [
 ] as const;
 
 interface ReservationModalProps {
+  key?: React.Key;
   tutor: Tutor;
   slot: { date: string; period: number };
   onClose: () => void;
@@ -64,30 +62,27 @@ export default function ReservationModal({
     return defaultCategory || '수업 직접 보조';
   }, [editReservation, defaultCategory, isKwonTutor, isYoonTutor]);
 
-  // Find smartest initial slot: if slot passed is already in past or booked, find earliest available slot
-  const initialSlot = React.useMemo(() => {
-    if (editReservation) {
-      return { date: editReservation.date, period: editReservation.period };
-    }
-    // If the provided slot is valid, scheduled, in future, and not booked, use it!
-    if (
-      slot.date && 
-      slot.period !== undefined &&
-      slot.period >= 0 && 
-      isSlotAvailable(slot.date, slot.period, tutor, reservations, closedMonths)
-    ) {
-      return slot;
-    }
-    // Otherwise, automatically locate the earliest available slot!
-    const earliest = findEarliestAvailableSlot(tutor, reservations, closedMonths);
-    if (earliest) {
-      return earliest;
-    }
-    return { date: slot.date || format(new Date(), 'yyyy-MM-dd'), period: slot.period !== undefined ? slot.period : 1 };
-  }, [editReservation, slot, tutor, reservations, closedMonths]);
+  // Initial date & period: faithfully reflect the exact slot clicked or edited
+  const initialDate = editReservation?.date || slot.date || format(new Date(), 'yyyy-MM-dd');
+  const [selectedDate, setSelectedDate] = React.useState<string>(initialDate);
 
-  // Date selection state: allow changing date directly in modal
-  const [selectedDate, setSelectedDate] = React.useState<string>(initialSlot.date);
+  const initialPeriod = editReservation?.period !== undefined 
+    ? editReservation.period 
+    : (slot.period !== undefined ? slot.period : 1);
+  const [selectedPeriods, setSelectedPeriods] = React.useState<number[]>([initialPeriod]);
+
+  // Keep state in sync if slot or editReservation changes
+  React.useEffect(() => {
+    if (editReservation) {
+      setSelectedDate(editReservation.date);
+      setSelectedPeriods([editReservation.period]);
+    } else if (slot.date) {
+      setSelectedDate(slot.date);
+      if (slot.period !== undefined) {
+        setSelectedPeriods([slot.period]);
+      }
+    }
+  }, [slot.date, slot.period, editReservation]);
 
   const [teacherName, setTeacherName] = React.useState(editReservation?.teacherName || '');
   const [category, setCategory] = React.useState<string>(initialCategory);
@@ -123,9 +118,6 @@ export default function ReservationModal({
     return '';
   });
 
-  const [selectedPeriods, setSelectedPeriods] = React.useState<number[]>(
-    editReservation ? [editReservation.period] : (initialSlot.period !== undefined ? [initialSlot.period] : [1])
-  );
   const [isRecurring, setIsRecurring] = React.useState(false);
   const [weeksToRepeat, setWeeksToRepeat] = React.useState(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -157,22 +149,6 @@ export default function ReservationModal({
       setCategory('수업 직접 보조');
     }
   }, [isYoonTutor, category]);
-
-  // When selectedDate changes, adjust periods to only valid available (not past, not booked) periods
-  React.useEffect(() => {
-    if (editReservation) return;
-    const availablePeriods = ALL_PERIODS.filter(p => 
-      isSlotAvailable(selectedDate, p, tutor, reservations, closedMonths, new Date())
-    );
-    if (availablePeriods.length > 0) {
-      const validSelected = selectedPeriods.filter(p => availablePeriods.includes(p));
-      if (validSelected.length === 0) {
-        setSelectedPeriods([availablePeriods[0]]);
-      }
-    } else {
-      setSelectedPeriods([]);
-    }
-  }, [selectedDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,11 +214,6 @@ export default function ReservationModal({
         for (const p of selectedPeriods) {
           if (!isTutorScheduled(tutor, currentDate, p)) continue;
           const pLabel = getPeriodLabel(p);
-          if (isPeriodInPast(currentDate, p)) {
-            alert(`${currentDate} ${pLabel}는 이미 시간이 종료되어 예약할 수 없습니다.`);
-            setIsSubmitting(false);
-            return;
-          }
           if (isSlotBooked(reservations, tutor.id, currentDate, p, editReservation?.id)) {
             alert(`${currentDate} ${pLabel}는 이미 예약이 완료되었습니다. 다른 시간을 선택해주세요.`);
             setIsSubmitting(false);
@@ -326,10 +297,6 @@ export default function ReservationModal({
         alert(`${DAYS[(new Date(selectedDate).getDay() + 6) % 7]}요일 ${pLabel}는 튜터님의 근무 일정이 아닙니다.`);
         return;
       }
-      if (isPeriodInPast(selectedDate, p)) {
-        alert(`선택하신 ${pLabel}는 이미 시간이 종료되어 신청할 수 없습니다.`);
-        return;
-      }
       if (isSlotBooked(reservations, tutor.id, selectedDate, p, editReservation?.id)) {
         alert(`선택하신 ${pLabel}는 이미 다른 예약이 완료되었습니다.`);
         return;
@@ -339,9 +306,6 @@ export default function ReservationModal({
   };
 
   const scheduledPeriodsForSelectedDate = ALL_PERIODS.filter(p => isTutorScheduled(tutor, selectedDate, p));
-  const availablePeriodsForSelectedDate = ALL_PERIODS.filter(p => 
-    isSlotAvailable(selectedDate, p, tutor, reservations, closedMonths, new Date(), editReservation?.id)
-  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-purple-900/10 backdrop-blur-sm overflow-hidden print:hidden">
@@ -406,7 +370,6 @@ export default function ReservationModal({
               <input 
                 type="date"
                 value={selectedDate}
-                min={format(new Date(), 'yyyy-MM-dd')}
                 onChange={(e) => {
                   if (e.target.value) {
                     setSelectedDate(e.target.value);
@@ -417,32 +380,12 @@ export default function ReservationModal({
               />
             </div>
 
-            {scheduledPeriodsForSelectedDate.length === 0 ? (
+            {scheduledPeriodsForSelectedDate.length === 0 && (
               <p className="text-[11px] font-bold text-amber-600 flex items-center gap-1 mt-1">
                 <AlertCircle size={13} />
                 선택하신 날짜는 튜터님의 근무 일정이 없습니다. 다른 날짜를 선택해주세요.
               </p>
-            ) : availablePeriodsForSelectedDate.length === 0 ? (
-              <div className="flex flex-col gap-1 mt-1 p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold">
-                  <AlertCircle size={14} className="text-amber-600 shrink-0" />
-                  <span>이 날짜는 예약 가능한 교시가 없습니다 (시간 종료 또는 예약 마감).</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const earliest = findEarliestAvailableSlot(tutor, reservations, closedMonths);
-                    if (earliest) {
-                      setSelectedDate(earliest.date);
-                      setSelectedPeriods([earliest.period]);
-                    }
-                  }}
-                  className="self-start text-[11px] font-black text-purple-700 hover:text-purple-900 underline cursor-pointer mt-0.5"
-                >
-                  👉 가장 빠른 예약 가능일로 바로 변경하기
-                </button>
-              </div>
-            ) : null}
+            )}
           </div>
 
           {/* Teacher Name */}
@@ -628,16 +571,10 @@ export default function ReservationModal({
               <div className="grid grid-cols-8 gap-1 sm:gap-1.5">
                 {ALL_PERIODS.map(p => {
                   const scheduled = isTutorScheduled(tutor, selectedDate, p);
-                  const inPast = isPeriodInPast(selectedDate, p);
                   const booked = isSlotBooked(reservations, tutor.id, selectedDate, p, editReservation?.id);
-                  const available = scheduled && !inPast && !booked && !isClosed;
+                  const available = scheduled && !booked && !isClosed;
                   const isSelected = selectedPeriods.includes(p);
                   const isLunch = p === LUNCH_PERIOD;
-
-                  let statusText = '';
-                  if (!scheduled) statusText = '휴무';
-                  else if (inPast) statusText = '종료';
-                  else if (booked) statusText = '마감';
 
                   const label = isLunch ? '점심' : `${p}교시`;
                   const fullTitle = isLunch 
@@ -652,12 +589,11 @@ export default function ReservationModal({
                       onClick={() => togglePeriod(p)}
                       title={
                         !scheduled ? '근무 일정 없음' :
-                        inPast ? '시간 경과 (예약 불가)' :
                         booked ? '이미 다른 예약이 완료된 교시입니다' :
                         fullTitle
                       }
                       className={cn(
-                        "h-8 sm:h-9 rounded-lg text-xs font-bold border transition-all flex flex-col items-center justify-center cursor-pointer select-none px-0.5",
+                        "h-8 sm:h-9 rounded-lg text-xs font-bold border transition-all flex items-center justify-center cursor-pointer select-none px-0.5",
                         isSelected 
                           ? (isLunch ? "bg-amber-500 border-amber-600 text-white shadow-xs font-black" : "bg-purple-600 border-purple-700 text-white shadow-xs font-black")
                           : available 
@@ -673,14 +609,6 @@ export default function ReservationModal({
                       )}>
                         {label}
                       </span>
-                      {statusText && !isSelected && (
-                        <span className={cn(
-                          "text-[9px] font-bold tracking-tighter leading-none mt-0.5",
-                          booked ? "text-rose-400" : "text-gray-400"
-                        )}>
-                          {statusText}
-                        </span>
-                      )}
                     </button>
                   );
                 })}

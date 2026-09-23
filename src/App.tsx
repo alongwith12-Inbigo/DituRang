@@ -543,8 +543,9 @@ export default function App() {
       <AnimatePresence>
         {isBookingOpen && selectedTutor && (
           <ReservationModal
+            key={editingReservation?.id || `${selectedSlot?.date}-${selectedSlot?.period}-${defaultBookingCategory || 'default'}`}
             tutor={selectedTutor}
-            slot={selectedSlot || { date: editingReservation?.date || '', period: editingReservation?.period || 0 }}
+            slot={selectedSlot || { date: editingReservation?.date || format(new Date(), 'yyyy-MM-dd'), period: editingReservation?.period !== undefined ? editingReservation.period : 1 }}
             editReservation={editingReservation || undefined}
             closedMonths={closedMonths}
             defaultCategory={defaultBookingCategory}
