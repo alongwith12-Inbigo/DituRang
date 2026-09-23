@@ -3,13 +3,31 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, addDa
 import { ko } from 'date-fns/locale';
 import { Tutor, Reservation, SchoolEvent, ALL_PERIODS, LUNCH_PERIOD, comparePeriods } from '../types';
 import { cn } from '../lib/utils';
-import { Coins, Clock, Download, Printer, ChevronRight, Calendar, UserCheck, CheckCircle2 } from 'lucide-react';
+import { 
+  Coins, 
+  Clock, 
+  Download, 
+  Printer, 
+  ChevronRight, 
+  Calendar, 
+  CheckCircle2, 
+  AlertTriangle, 
+  AlertCircle, 
+  Target, 
+  RefreshCw, 
+  Calculator,
+  HelpCircle,
+  ShieldCheck,
+  Edit3
+} from 'lucide-react';
 
 interface TutorSalaryReportProps {
   tutors: Tutor[];
   reservations?: Reservation[];
   schoolEvents?: SchoolEvent[];
 }
+
+export const DIGITAL_TUTOR_TOTAL_BUDGET = 22848000; // 22,848,000원
 
 interface MonthDetail {
   month: number; // 4 ~ 12
@@ -20,7 +38,7 @@ interface MonthDetail {
       rawHours: number; // 주/월 한도 적용 전 실제 시간
       weeklyCappedHours: number; // 주 14시간 상한 적용 시간
       payableHours: number; // 월 60시간 상한 적용 최종 인정 시간
-      salary: number; // payableHours * 30,000
+      salary: number; // payableHours * hourlyRate
       cumHours: number; // 4월부터 누계 시간
       cumSalary: number; // 4월부터 누계 급여
       isWeeklyOver: boolean; // 주 14시간 초과 주가 있었는지 여부
@@ -37,9 +55,10 @@ interface MonthDetail {
   totalPayableHours: number;
   totalSalary: number;
   totalCumSalary: number;
+  remainingBudget: number;
+  cumExecutionRate: number;
 }
 
-const HOURLY_RATE = 30000;
 const MAX_WEEKLY_HOURS = 14;
 const MAX_MONTHLY_HOURS = 60;
 const TARGET_MONTHS = [4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -47,11 +66,54 @@ const SYSTEM_START_DATE = '2026-04-28'; // 근무 개시 기준일 (4월은 4/28
 
 export default function TutorSalaryReport({ tutors, reservations = [], schoolEvents = [] }: TutorSalaryReportProps) {
   const [selectedYear, setSelectedYear] = React.useState<number>(2026);
+  
+  // Total Budget (전체 급여 예산: 22,848,000원 기본값 및 영구 보존)
+  const [totalBudget, setTotalBudget] = React.useState<number>(() => {
+    const saved = localStorage.getItem('d_tutor_budget_amount');
+    if (saved) {
+      const parsed = Number(saved);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return DIGITAL_TUTOR_TOTAL_BUDGET;
+  });
+
+  // Hourly Rate (시간당 단가: 30,000원 기본, 24,000원 추천 등 선택 가능)
+  const [hourlyRate, setHourlyRate] = React.useState<number>(() => {
+    const saved = localStorage.getItem('d_tutor_hourly_rate');
+    if (saved) {
+      const parsed = Number(saved);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return 30000;
+  });
+
+  const [isEditingBudget, setIsEditingBudget] = React.useState(false);
+  const [budgetInput, setBudgetInput] = React.useState(totalBudget.toString());
+  const [isEditingRate, setIsEditingRate] = React.useState(false);
+  const [rateInput, setRateInput] = React.useState(hourlyRate.toString());
+
   const [selectedDetail, setSelectedDetail] = React.useState<{
     month: number;
     tutor: Tutor;
     stats: MonthDetail['tutorStats'][string];
   } | null>(null);
+
+  const saveBudget = (amount: number) => {
+    setTotalBudget(amount);
+    localStorage.setItem('d_tutor_budget_amount', String(amount));
+    setIsEditingBudget(false);
+  };
+
+  const saveHourlyRate = (rate: number) => {
+    setHourlyRate(rate);
+    localStorage.setItem('d_tutor_hourly_rate', String(rate));
+    setIsEditingRate(false);
+  };
+
+  const resetToDefaultBudget = () => {
+    saveBudget(DIGITAL_TUTOR_TOTAL_BUDGET);
+    setBudgetInput(DIGITAL_TUTOR_TOTAL_BUDGET.toString());
+  };
 
   // Helper to get week start (Monday)
   const getWeekStart = (dateStr: string) => {
@@ -158,7 +220,7 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
         // Apply monthly cap of 60 hours
         const isMonthlyOver = weeklyCappedMonthHours > MAX_MONTHLY_HOURS;
         const payableHours = Math.min(MAX_MONTHLY_HOURS, weeklyCappedMonthHours);
-        const salary = payableHours * HOURLY_RATE;
+        const salary = payableHours * hourlyRate;
 
         // Update cumulative stats
         cumTrackers[tutor.id].hours += payableHours;
@@ -182,6 +244,9 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
 
       totalRunningCumSalary += monthTotalSalary;
 
+      const remainingBudget = totalBudget - totalRunningCumSalary;
+      const cumExecutionRate = totalBudget > 0 ? (totalRunningCumSalary / totalBudget) * 100 : 0;
+
       monthsData.push({
         month,
         monthStr,
@@ -189,27 +254,39 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
         tutorStats,
         totalPayableHours: monthTotalPayableHours,
         totalSalary: monthTotalSalary,
-        totalCumSalary: totalRunningCumSalary
+        totalCumSalary: totalRunningCumSalary,
+        remainingBudget,
+        cumExecutionRate
       });
     });
 
     return monthsData;
-  }, [tutors, selectedYear, tutor1.id, tutor2.id]);
+  }, [tutors, selectedYear, tutor1.id, tutor2.id, hourlyRate, totalBudget]);
 
   // Grand totals for 4~12 months
   const grandTotal = React.useMemo(() => {
     const t1Last = reportData[reportData.length - 1]?.tutorStats[tutor1.id];
     const t2Last = reportData[reportData.length - 1]?.tutorStats[tutor2.id];
 
+    const allTotalHours = (t1Last?.cumHours || 0) + (t2Last?.cumHours || 0);
+    const allTotalSalary = (t1Last?.cumSalary || 0) + (t2Last?.cumSalary || 0);
+    const budgetDiff = totalBudget - allTotalSalary; // Positive = Under budget, Negative = Over budget
+    const budgetExecutionRate = totalBudget > 0 ? (allTotalSalary / totalBudget) * 100 : 0;
+
     return {
       t1TotalHours: t1Last?.cumHours || 0,
       t1TotalSalary: t1Last?.cumSalary || 0,
       t2TotalHours: t2Last?.cumHours || 0,
       t2TotalSalary: t2Last?.cumSalary || 0,
-      allTotalHours: (t1Last?.cumHours || 0) + (t2Last?.cumHours || 0),
-      allTotalSalary: (t1Last?.cumSalary || 0) + (t2Last?.cumSalary || 0)
+      allTotalHours,
+      allTotalSalary,
+      budgetDiff,
+      budgetExecutionRate,
+      isExact: budgetDiff === 0,
+      isOver: budgetDiff < 0,
+      isUnder: budgetDiff > 0
     };
-  }, [reportData, tutor1.id, tutor2.id]);
+  }, [reportData, tutor1.id, tutor2.id, totalBudget]);
 
   // CSV Export handler
   const handleExportCSV = () => {
@@ -224,7 +301,10 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
       `${tutor2.name}_근무누계(시간)`,
       `${tutor2.name}_월급누계(원)`,
       '월별합계_총근무시간(시간)',
-      '월별합계_총지급액(원)'
+      '월별합계_당월지급액(원)',
+      '월별합계_누계지급액(원)',
+      '월별합계_예산잔액(원)',
+      '월별합계_누계집행률(%)'
     ];
 
     const rows = reportData.map(r => {
@@ -241,7 +321,10 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
         s2?.cumHours ?? 0,
         s2?.cumSalary ?? 0,
         r.totalPayableHours,
-        r.totalSalary
+        r.totalSalary,
+        r.totalCumSalary,
+        r.remainingBudget,
+        r.cumExecutionRate.toFixed(1)
       ];
     });
 
@@ -257,8 +340,20 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
       grandTotal.t2TotalHours,
       grandTotal.t2TotalSalary,
       grandTotal.allTotalHours,
-      grandTotal.allTotalSalary
+      grandTotal.allTotalSalary,
+      grandTotal.allTotalSalary,
+      grandTotal.budgetDiff,
+      grandTotal.budgetExecutionRate.toFixed(1)
     ]);
+
+    // Budget Summary Section
+    rows.push([]);
+    rows.push(['[디지털 튜터 총 급여 예산 준수 현황]']);
+    rows.push(['전체 배정 예산(원)', totalBudget]);
+    rows.push(['현재 산정 총액(원)', grandTotal.allTotalSalary]);
+    rows.push(['예산 차액(원)', grandTotal.budgetDiff]);
+    rows.push(['집행률(%)', grandTotal.budgetExecutionRate.toFixed(2)]);
+    rows.push(['예산 판정', grandTotal.isExact ? '100% 정액 일치 (준수 완료)' : grandTotal.isUnder ? `예산 미달 (${grandTotal.budgetDiff}원 잔여)` : `예산 초과 (${Math.abs(grandTotal.budgetDiff)}원 초과)`]);
 
     const csvContent = '\uFEFF' + [
       headers.join(','),
@@ -269,7 +364,7 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${selectedYear}년_튜터_월급정산표(4월~12월).csv`;
+    link.download = `${selectedYear}년_디지털튜터_급여정산표(예산${totalBudget.toLocaleString()}원).csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -280,21 +375,353 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
 
   return (
     <div className="space-y-6">
-      {/* Top Header Controls */}
+      {/* 1. Core Budget Compliance Section (디지털 튜터 전체 급여 예산 22,848,000원 준수 관리 패널) */}
+      <section className={cn(
+        "p-6 sm:p-7 rounded-3xl border transition-all shadow-sm relative overflow-hidden",
+        grandTotal.isExact 
+          ? "bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/50 border-emerald-300 ring-2 ring-emerald-500/20"
+          : grandTotal.isOver
+            ? "bg-gradient-to-br from-rose-50/95 via-white to-orange-50/60 border-rose-300 ring-2 ring-rose-500/20"
+            : "bg-gradient-to-br from-amber-50/95 via-white to-sky-50/60 border-amber-300 ring-2 ring-amber-500/20"
+      )}>
+        {/* Decorative Top Accent Stripe */}
+        <div className={cn(
+          "absolute top-0 left-0 right-0 h-1.5",
+          grandTotal.isExact ? "bg-emerald-500" : grandTotal.isOver ? "bg-rose-500" : "bg-amber-500"
+        )} />
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pb-5 border-b border-slate-200/80">
+          <div className="flex items-start gap-4">
+            <div className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+              grandTotal.isExact 
+                ? "bg-emerald-500 text-white shadow-emerald-200" 
+                : grandTotal.isOver 
+                  ? "bg-rose-500 text-white shadow-rose-200" 
+                  : "bg-amber-500 text-white shadow-amber-200"
+            )}>
+              {grandTotal.isExact ? (
+                <ShieldCheck size={26} />
+              ) : grandTotal.isOver ? (
+                <AlertCircle size={26} />
+              ) : (
+                <AlertTriangle size={26} />
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-900 text-white">
+                  예산 준수 필수 기준
+                </span>
+                <span className={cn(
+                  "text-[11px] font-black px-2.5 py-0.5 rounded-full border",
+                  grandTotal.isExact 
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-200" 
+                    : grandTotal.isOver
+                      ? "bg-rose-100 text-rose-800 border-rose-200 animate-pulse"
+                      : "bg-amber-100 text-amber-800 border-amber-200"
+                )}>
+                  {grandTotal.isExact 
+                    ? "✅ 100.0% 정액 일치 (규정 충족)" 
+                    : grandTotal.isOver 
+                      ? "🚨 예산 초과 발생 (일정 감축 필요)" 
+                      : "⚠️ 예산 미달 집행 (추가 배정 필요)"}
+                </span>
+              </div>
+
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                디지털 튜터 전체 급여 예산: <span className="text-purple-700 underline decoration-purple-300 decoration-4">{totalBudget.toLocaleString()}원</span>
+              </h2>
+
+              <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                <strong className="text-rose-600">※ 중요 지침:</strong> 본 예산(<span className="font-mono font-bold text-slate-900">{totalBudget.toLocaleString()}원</span>)은 <strong>넘쳐서도, 모자라서도 안 되며</strong> 100% 정액 집행되어야 합니다.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Settings & Controls */}
+          <div className="flex items-center gap-2.5 flex-wrap self-start lg:self-center">
+            {/* Hourly Rate Toggle / Input */}
+            <div className="flex items-center bg-white p-1 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-black text-slate-500 pl-2.5 pr-1">시급 단가</span>
+              <button
+                type="button"
+                onClick={() => saveHourlyRate(30000)}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer",
+                  hourlyRate === 30000 ? "bg-purple-600 text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
+                )}
+              >
+                30,000원
+              </button>
+              <button
+                type="button"
+                onClick={() => saveHourlyRate(24000)}
+                className={cn(
+                  "px-2.5 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer",
+                  hourlyRate === 24000 ? "bg-purple-600 text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
+                )}
+                title="34주 x 14시간 x 2명 = 952시간 정액 매칭 권장 단가"
+              >
+                24,000원 <span className="text-[10px] opacity-80">(매칭)</span>
+              </button>
+              
+              {isEditingRate ? (
+                <div className="flex items-center gap-1 pl-1">
+                  <input 
+                    type="number" 
+                    value={rateInput} 
+                    onChange={e => setRateInput(e.target.value)} 
+                    className="w-20 px-2 py-0.5 text-xs font-bold border border-purple-300 rounded-lg outline-none"
+                    placeholder="단가"
+                  />
+                  <button 
+                    onClick={() => saveHourlyRate(Number(rateInput) || 30000)}
+                    className="px-2 py-1 bg-purple-700 text-white text-[11px] font-bold rounded-lg cursor-pointer"
+                  >
+                    저장
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setIsEditingRate(true); setRateInput(hourlyRate.toString()); }}
+                  className="px-2 py-1 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer"
+                  title="단가 직접 입력"
+                >
+                  <Edit3 size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Budget Editor Popover / Button */}
+            {isEditingBudget ? (
+              <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-purple-300 shadow-xs">
+                <input 
+                  type="number"
+                  value={budgetInput}
+                  onChange={e => setBudgetInput(e.target.value)}
+                  className="w-28 px-2.5 py-1 text-xs font-bold border rounded-xl outline-none text-slate-800"
+                  placeholder="예산 금액"
+                />
+                <button 
+                  onClick={() => saveBudget(Number(budgetInput) || DIGITAL_TUTOR_TOTAL_BUDGET)}
+                  className="px-2.5 py-1 bg-purple-600 text-white text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  적용
+                </button>
+                <button 
+                  onClick={() => setIsEditingBudget(false)}
+                  className="px-2 py-1 text-slate-400 hover:text-slate-700 text-xs font-bold cursor-pointer"
+                >
+                  취소
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setIsEditingBudget(true); setBudgetInput(totalBudget.toString()); }}
+                className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-2xl border border-slate-200 transition-colors shadow-xs flex items-center gap-1 cursor-pointer"
+              >
+                <Edit3 size={13} /> 예산액 수정
+              </button>
+            )}
+
+            {totalBudget !== DIGITAL_TUTOR_TOTAL_BUDGET && (
+              <button
+                onClick={resetToDefaultBudget}
+                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-2xl transition-colors flex items-center gap-1 cursor-pointer"
+                title="기본 예산(22,848,000원)으로 복원"
+              >
+                <RefreshCw size={12} /> 기본값 복원
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 4 Key Metrics Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 pt-5 pb-4">
+          {/* 1. Target Budget */}
+          <div className="bg-white/90 backdrop-blur-xs p-4 rounded-2xl border border-slate-200/90 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              총 배정 예산 (목표)
+            </span>
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className="text-xl sm:text-2xl font-black text-slate-900 font-mono">
+                {totalBudget.toLocaleString()}
+              </span>
+              <span className="text-xs font-bold text-slate-500">원</span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium mt-0.5">정액 집행 대상 기준</p>
+          </div>
+
+          {/* 2. Calculated Salary */}
+          <div className="bg-white/90 backdrop-blur-xs p-4 rounded-2xl border border-slate-200/90 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              현재 집행(산정) 총액
+            </span>
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className={cn(
+                "text-xl sm:text-2xl font-black font-mono",
+                grandTotal.isExact ? "text-emerald-700" : grandTotal.isOver ? "text-rose-700" : "text-amber-700"
+              )}>
+                {grandTotal.allTotalSalary.toLocaleString()}
+              </span>
+              <span className="text-xs font-bold text-slate-500">원</span>
+            </div>
+            <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+              총 {grandTotal.allTotalHours}시간 인정 ({hourlyRate.toLocaleString()}원/시)
+            </p>
+          </div>
+
+          {/* 3. Execution Rate */}
+          <div className="bg-white/90 backdrop-blur-xs p-4 rounded-2xl border border-slate-200/90 shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              예산 집행률 (목표 100%)
+            </span>
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className={cn(
+                "text-xl sm:text-2xl font-black font-mono",
+                grandTotal.isExact ? "text-emerald-600" : grandTotal.isOver ? "text-rose-600" : "text-blue-600"
+              )}>
+                {grandTotal.budgetExecutionRate.toFixed(1)}
+              </span>
+              <span className="text-xs font-bold text-slate-500">%</span>
+            </div>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className={cn(
+                "w-2 h-2 rounded-full",
+                grandTotal.isExact ? "bg-emerald-500" : grandTotal.isOver ? "bg-rose-500" : "bg-amber-500"
+              )} />
+              <p className="text-[10px] font-bold text-slate-500">
+                {grandTotal.isExact ? "100% 정액 일치" : grandTotal.isOver ? "예산 초과 집행" : "예산 미달 상태"}
+              </p>
+            </div>
+          </div>
+
+          {/* 4. Budget Difference */}
+          <div className={cn(
+            "p-4 rounded-2xl border shadow-xs transition-colors",
+            grandTotal.isExact 
+              ? "bg-emerald-50/80 border-emerald-200 text-emerald-950" 
+              : grandTotal.isOver 
+                ? "bg-rose-50/90 border-rose-200 text-rose-950" 
+                : "bg-amber-50/90 border-amber-200 text-amber-950"
+          )}>
+            <span className="text-[11px] font-black uppercase tracking-wider block opacity-75">
+              예산 차액 (초과 / 잔여)
+            </span>
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className={cn(
+                "text-xl sm:text-2xl font-black font-mono",
+                grandTotal.isExact ? "text-emerald-800" : grandTotal.isOver ? "text-rose-700" : "text-amber-800"
+              )}>
+                {grandTotal.budgetDiff === 0 
+                  ? "0" 
+                  : grandTotal.budgetDiff > 0 
+                    ? `+${grandTotal.budgetDiff.toLocaleString()}` 
+                    : `-${Math.abs(grandTotal.budgetDiff).toLocaleString()}`}
+              </span>
+              <span className="text-xs font-bold opacity-80">원</span>
+            </div>
+            <p className="text-[10px] font-bold mt-0.5 leading-tight">
+              {grandTotal.isExact 
+                ? "🎉 오차 없음 (완벽 일치)" 
+                : grandTotal.isOver 
+                  ? `약 ${(Math.abs(grandTotal.budgetDiff) / hourlyRate).toFixed(1)}시간 초과 (축소 필요)` 
+                  : `약 ${(grandTotal.budgetDiff / hourlyRate).toFixed(1)}시간 잔여 (추가 필요)`}
+            </p>
+          </div>
+        </div>
+
+        {/* Visual Budget Progress Bar */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+            <span className="flex items-center gap-1.5">
+              <Target size={14} className="text-purple-600" />
+              <span>예산 집행 진행 바</span>
+            </span>
+            <div className="flex items-center gap-3 text-[11px]">
+              <span className="font-mono font-bold text-slate-500">
+                0원
+              </span>
+              <span className="font-mono font-black text-purple-700">
+                목표 100% ({totalBudget.toLocaleString()}원)
+              </span>
+            </div>
+          </div>
+
+          <div className="w-full h-3.5 bg-slate-200/80 rounded-full overflow-hidden relative shadow-inner p-0.5">
+            {/* 100% Target Indicator Marker */}
+            <div className="absolute top-0 bottom-0 left-[100%] w-1 bg-slate-800 -ml-0.5 z-10 opacity-70" title="100% 정액 지점" />
+
+            <div 
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                grandTotal.isExact 
+                  ? "bg-gradient-to-r from-teal-500 to-emerald-500 shadow-sm"
+                  : grandTotal.isOver 
+                    ? "bg-gradient-to-r from-amber-500 via-rose-500 to-red-600 shadow-sm animate-pulse" 
+                    : "bg-gradient-to-r from-blue-400 to-amber-500 shadow-sm"
+              )}
+              style={{ width: `${Math.min(100, grandTotal.budgetExecutionRate)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Actionable Notice / Advisory Box */}
+        <div className={cn(
+          "mt-4 p-3.5 rounded-2xl border text-xs font-semibold flex items-start gap-3",
+          grandTotal.isExact 
+            ? "bg-emerald-100/60 border-emerald-300 text-emerald-900" 
+            : grandTotal.isOver 
+              ? "bg-rose-100/60 border-rose-300 text-rose-900" 
+              : "bg-amber-100/60 border-amber-300 text-amber-900"
+        )}>
+          <div className="shrink-0 mt-0.5">
+            {grandTotal.isExact ? (
+              <CheckCircle2 size={16} className="text-emerald-700" />
+            ) : grandTotal.isOver ? (
+              <AlertCircle size={16} className="text-rose-700" />
+            ) : (
+              <HelpCircle size={16} className="text-amber-700" />
+            )}
+          </div>
+          <div className="flex-1 space-y-0.5">
+            {grandTotal.isExact ? (
+              <p>
+                <strong>정액 일치 완료:</strong> 4월~12월 튜터들의 총 급여 산정액이 예산 <strong>{totalBudget.toLocaleString()}원</strong>과 1원의 오차도 없이 정확히 맞아떨어졌습니다. 현재 상태로 월 마감 및 정산을 진행하시면 됩니다.
+              </p>
+            ) : grandTotal.isOver ? (
+              <p>
+                <strong>예산 초과 경고:</strong> 배정된 총 예산보다 <strong>{Math.abs(grandTotal.budgetDiff).toLocaleString()}원</strong>이 초과 산정되었습니다. 지침상 예산 초과 집행은 불가하므로, <strong>[학사일정 관리]</strong>나 <strong>[주간 일정 개별 설정]</strong>에서 근무시간을 <strong>약 {(Math.abs(grandTotal.budgetDiff) / hourlyRate).toFixed(1)}시간</strong> 축소 조정해주시기 바랍니다.
+              </p>
+            ) : (
+              <p>
+                <strong>예산 미달 주의:</strong> 배정된 총 예산보다 <strong>{grandTotal.budgetDiff.toLocaleString()}원</strong>이 부족합니다. 지침상 불용액(미달) 없이 전액 집행되어야 하므로, 튜터 근무시간을 <strong>약 {(grandTotal.budgetDiff / hourlyRate).toFixed(1)}시간</strong> 추가 배정하여 예산 {totalBudget.toLocaleString()}원에 정확히 맞춰주시기 바랍니다.
+              </p>
+            )}
+            <p className="text-[11px] opacity-80 pt-0.5">
+              💡 <strong>편성 공식 참고:</strong> 2명의 튜터가 주 14시간씩 약 34주간 활동할 경우 총 952시간이 되며, 시급 24,000원 적용 시 정확히 22,848,000원이 산출됩니다.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Top Header Controls & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
             <Coins size={22} />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-black text-slate-800">튜터 월급 및 근무시간 정산표</h3>
-              <span className="text-[11px] px-2 py-0.5 bg-blue-100/80 text-blue-700 font-bold rounded-md">
+              <span className="text-[11px] px-2 py-0.5 bg-purple-100 text-purple-700 font-bold rounded-md">
                 4월~12월 통합
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              기준 단가 30,000원/시간 | 주간 최대 14시간 | 월간 최대 60시간 (근무개시: 2026.04.28~)
+              기준 단가 {hourlyRate.toLocaleString()}원/시간 | 주간 최대 14시간 | 월간 최대 60시간 (근무개시: 2026.04.28~)
             </p>
           </div>
         </div>
@@ -315,20 +742,20 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
           >
-            <Download size={14} /> 엑셀 다운로드
+            <Download size={14} /> 엑셀 다운로드 (예산포함)
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
           >
             <Printer size={14} /> 인쇄
           </button>
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
+      {/* 3. Summary KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Tutor 1 Card */}
         <div className="bg-gradient-to-br from-rose-50/60 to-white p-4 rounded-2xl border border-rose-100 shadow-xs flex items-center justify-between">
@@ -370,38 +797,71 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
           </div>
         </div>
 
-        {/* Overall Grand Total Card */}
-        <div className="bg-gradient-to-br from-amber-50/80 to-white p-4 rounded-2xl border border-amber-200 shadow-xs flex items-center justify-between">
+        {/* Overall Grand Total & Budget Card */}
+        <div className={cn(
+          "p-4 rounded-2xl border shadow-xs flex items-center justify-between transition-colors",
+          grandTotal.isExact 
+            ? "bg-gradient-to-br from-emerald-50/80 to-white border-emerald-200" 
+            : grandTotal.isOver 
+              ? "bg-gradient-to-br from-rose-50/80 to-white border-rose-200" 
+              : "bg-gradient-to-br from-amber-50/80 to-white border-amber-200"
+        )}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black text-sm">
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm",
+              grandTotal.isExact 
+                ? "bg-emerald-100 text-emerald-800" 
+                : grandTotal.isOver 
+                  ? "bg-rose-100 text-rose-800" 
+                  : "bg-amber-100 text-amber-800"
+            )}>
               합
             </div>
             <div>
-              <span className="text-sm font-black text-slate-800">전체 튜터 합산 (4~12월)</span>
-              <p className="text-xs font-bold text-slate-500 mt-0.5">총 {grandTotal.allTotalHours}시간 집계</p>
+              <span className="text-sm font-black text-slate-800">전체 튜터 소요액 vs 예산</span>
+              <p className="text-xs font-bold text-slate-500 mt-0.5">
+                총 {grandTotal.allTotalHours}시간 / 배정 {totalBudget.toLocaleString()}원
+              </p>
             </div>
           </div>
           <div className="text-right">
-            <span className="text-[10px] font-bold text-slate-400">총 소요 예산</span>
-            <p className="text-base font-black text-amber-700">{grandTotal.allTotalSalary.toLocaleString()}원</p>
+            <div className="flex items-center justify-end gap-1">
+              <span className="text-[10px] font-bold text-slate-400">집행률</span>
+              <span className={cn(
+                "text-[10px] font-black px-1.5 py-0.2 rounded",
+                grandTotal.isExact ? "bg-emerald-100 text-emerald-700" : grandTotal.isOver ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+              )}>
+                {grandTotal.budgetExecutionRate.toFixed(1)}%
+              </span>
+            </div>
+            <p className={cn(
+              "text-base font-black font-mono",
+              grandTotal.isExact ? "text-emerald-700" : grandTotal.isOver ? "text-rose-700" : "text-amber-700"
+            )}>
+              {grandTotal.allTotalSalary.toLocaleString()}원
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Main Table Container with Clear Layout & Readable Typography */}
+      {/* 4. Main Table Container with Budget Cumulative Tracking */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+            <span className="w-2 h-2 rounded-full bg-purple-500"></span>
             <h4 className="text-xs font-black text-slate-700">월별 근무시간 및 급여 정산 일람표</h4>
             <span className="text-[11px] text-slate-400">|</span>
             <span className="text-[11px] text-slate-500 font-medium">행을 클릭하면 해당 월의 주차별 상세 내역을 확인할 수 있습니다.</span>
           </div>
-          <span className="text-[11px] font-bold text-slate-400">단위: 시간, 원(KRW)</span>
+          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500">
+            <span>총 예산: <strong className="text-purple-700">{totalBudget.toLocaleString()}원</strong></span>
+            <span>|</span>
+            <span>단위: 시간, 원(KRW)</span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse min-w-[960px]">
+          <table className="w-full text-xs text-left border-collapse min-w-[1100px]">
             <thead>
               {/* Group Tier Headers */}
               <tr className="border-b border-slate-200 text-center font-bold">
@@ -425,9 +885,14 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
                   </div>
                 </th>
 
-                {/* Combined Total Header Group */}
-                <th colSpan={2} className="py-2.5 px-3 bg-amber-50/90 text-amber-950 border-r border-amber-200">
-                  <span className="text-xs font-black">월별 합계</span>
+                {/* Combined Total & Budget Tracking Header Group */}
+                <th colSpan={5} className="py-2.5 px-3 bg-amber-50/90 text-amber-950 border-r border-amber-200">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-xs font-black">월별 합계 및 예산 집행 누계</span>
+                    <span className="text-[10px] px-1.5 py-0.2 bg-amber-200 text-amber-900 font-bold rounded">
+                      목표 {totalBudget.toLocaleString()}원
+                    </span>
+                  </div>
                 </th>
 
                 <th rowSpan={2} className="py-3 px-2.5 bg-slate-100 text-slate-600 w-12 text-center">
@@ -449,9 +914,12 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
                 <th className="py-2 px-2.5 bg-sky-50/20 border-r border-slate-200/80 text-slate-500 whitespace-nowrap">근무 누계</th>
                 <th className="py-2 px-2.5 bg-sky-50/20 border-r border-sky-200 text-slate-500 whitespace-nowrap">월급 누계</th>
 
-                {/* Total Sub Columns */}
-                <th className="py-2 px-2.5 bg-amber-50/40 border-r border-slate-200/80 text-amber-900 whitespace-nowrap">총 근무시간</th>
-                <th className="py-2 px-2.5 bg-amber-50/40 border-r border-amber-200 text-amber-900 whitespace-nowrap">총 지급액</th>
+                {/* Total & Budget Sub Columns */}
+                <th className="py-2 px-2 bg-amber-50/40 border-r border-slate-200/80 text-amber-900 whitespace-nowrap">총 시간</th>
+                <th className="py-2 px-2.5 bg-amber-50/40 border-r border-slate-200/80 text-amber-900 whitespace-nowrap">당월 지급액</th>
+                <th className="py-2 px-2.5 bg-amber-100/50 border-r border-slate-200/80 text-amber-950 font-black whitespace-nowrap">누계 지급액</th>
+                <th className="py-2 px-2.5 bg-amber-50/40 border-r border-slate-200/80 text-slate-600 whitespace-nowrap">예산 잔액</th>
+                <th className="py-2 px-2 bg-amber-50/40 border-r border-amber-200 text-purple-900 whitespace-nowrap">집행률</th>
               </tr>
             </thead>
 
@@ -464,7 +932,7 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
                   <tr 
                     key={row.month} 
                     className={cn(
-                      "hover:bg-blue-50/40 transition-colors h-11 font-medium cursor-pointer",
+                      "hover:bg-purple-50/30 transition-colors h-11 font-medium cursor-pointer",
                       idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
                     )}
                     onClick={() => setSelectedDetail({ month: row.month, tutor: tutor1, stats: s1 })}
@@ -539,13 +1007,31 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
                     </td>
 
                     {/* Total: 총 근무시간 */}
-                    <td className="py-2 px-2.5 text-center font-mono font-bold text-slate-800 bg-amber-50/30 border-r border-slate-100 whitespace-nowrap">
+                    <td className="py-2 px-2 text-center font-mono font-bold text-slate-800 bg-amber-50/20 border-r border-slate-100 whitespace-nowrap">
                       {row.totalPayableHours}시간
                     </td>
 
-                    {/* Total: 총 지급액 */}
-                    <td className="py-2 px-3 text-right font-mono font-black text-amber-800 bg-amber-50/30 border-r border-amber-100 whitespace-nowrap">
+                    {/* Total: 당월 지급액 */}
+                    <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-800 bg-amber-50/20 border-r border-slate-100 whitespace-nowrap">
                       {row.totalSalary.toLocaleString()}원
+                    </td>
+
+                    {/* Total: 누계 지급액 */}
+                    <td className="py-2 px-2.5 text-right font-mono font-black text-amber-900 bg-amber-100/40 border-r border-slate-100 whitespace-nowrap">
+                      {row.totalCumSalary.toLocaleString()}원
+                    </td>
+
+                    {/* Total: 예산 잔액 */}
+                    <td className={cn(
+                      "py-2 px-2.5 text-right font-mono font-bold border-r border-slate-100 whitespace-nowrap",
+                      row.remainingBudget >= 0 ? "text-slate-600" : "text-rose-600 bg-rose-50/50 font-black"
+                    )}>
+                      {row.remainingBudget.toLocaleString()}원
+                    </td>
+
+                    {/* Total: 누계 집행률 */}
+                    <td className="py-2 px-2 text-center font-mono font-black text-purple-700 bg-amber-50/20 border-r border-amber-100 whitespace-nowrap">
+                      {row.cumExecutionRate.toFixed(1)}%
                     </td>
 
                     {/* Action Button */}
@@ -595,12 +1081,35 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
                   {grandTotal.t2TotalSalary.toLocaleString()}원
                 </td>
 
-                {/* Combined Grand Totals */}
-                <td className="py-2 px-2.5 text-center font-mono font-black text-amber-950 bg-amber-100/70 border-r border-slate-200 whitespace-nowrap">
+                {/* Combined Grand Totals & Budget Adherence Footer */}
+                <td className="py-2 px-2 text-center font-mono font-black text-amber-950 bg-amber-100/70 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.allTotalHours}시간
                 </td>
-                <td className="py-2 px-3 text-right font-mono font-black text-amber-900 bg-amber-100/70 border-r border-amber-200 whitespace-nowrap">
+                <td className="py-2 px-2.5 text-right font-mono font-black text-amber-900 bg-amber-100/70 border-r border-slate-200 whitespace-nowrap">
                   {grandTotal.allTotalSalary.toLocaleString()}원
+                </td>
+                <td className="py-2 px-2.5 text-right font-mono font-black text-amber-950 bg-amber-200/60 border-r border-slate-200 whitespace-nowrap">
+                  {grandTotal.allTotalSalary.toLocaleString()}원
+                </td>
+                <td className={cn(
+                  "py-2 px-2.5 text-right font-mono font-black border-r border-slate-200 whitespace-nowrap",
+                  grandTotal.isExact 
+                    ? "bg-emerald-100 text-emerald-800" 
+                    : grandTotal.isOver 
+                      ? "bg-rose-100 text-rose-800" 
+                      : "bg-amber-100 text-amber-800"
+                )}>
+                  {grandTotal.budgetDiff === 0 
+                    ? "0원 (일치)" 
+                    : grandTotal.budgetDiff > 0 
+                      ? `${grandTotal.budgetDiff.toLocaleString()}원 (잔여)` 
+                      : `${Math.abs(grandTotal.budgetDiff).toLocaleString()}원 (초과)`}
+                </td>
+                <td className={cn(
+                  "py-2 px-2 text-center font-mono font-black border-r border-amber-200 whitespace-nowrap",
+                  grandTotal.isExact ? "bg-emerald-200 text-emerald-900" : grandTotal.isOver ? "bg-rose-200 text-rose-900" : "bg-amber-200 text-amber-900"
+                )}>
+                  {grandTotal.budgetExecutionRate.toFixed(1)}%
                 </td>
 
                 <td className="py-2 px-2 bg-slate-100 text-center"></td>
@@ -625,7 +1134,7 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
               </div>
               <button
                 onClick={() => setSelectedDetail(null)}
-                className="p-1.5 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1.5 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
               >
                 ✕
               </button>
@@ -667,7 +1176,7 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
                   <p className="text-base font-black text-blue-700 mt-0.5">{selectedDetail.stats.payableHours}시간</p>
                 </div>
                 <div>
-                  <span className="text-[11px] font-bold text-emerald-600">해당 월 급여 (3만원/시)</span>
+                  <span className="text-[11px] font-bold text-emerald-600">해당 월 급여 ({hourlyRate.toLocaleString()}원/시)</span>
                   <p className="text-base font-black text-emerald-700 mt-0.5">{selectedDetail.stats.salary.toLocaleString()}원</p>
                 </div>
               </div>

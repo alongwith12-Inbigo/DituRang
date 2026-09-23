@@ -486,10 +486,10 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                 onClick={() => setActiveTab('salary')}
                 className={cn(
                   "px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
-                  activeTab === 'salary' ? "bg-[#1E88E5] text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
+                  activeTab === 'salary' ? "bg-purple-600 text-white shadow-sm" : "text-[#90A4AE] hover:bg-[#F5F5F5]"
                 )}
               >
-                <Coins size={14} /> 튜터 월급 정산
+                <Coins size={14} /> 튜터 월급 계산 (예산 22,848,000원)
               </button>
               <button 
                 onClick={() => setActiveTab('calendar')}
