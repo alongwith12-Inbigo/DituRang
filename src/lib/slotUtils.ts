@@ -75,6 +75,8 @@ export function isSlotAvailable(
   now: Date = new Date(),
   excludeReservationId?: string
 ): boolean {
+  if (period === LUNCH_PERIOD) return false;
+
   const monthStr = dateStr.substring(0, 7);
   if (closedMonths?.includes(monthStr)) return false;
 

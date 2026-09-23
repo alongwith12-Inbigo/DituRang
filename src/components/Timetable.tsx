@@ -93,17 +93,35 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
           {periods.map((period) => {
             const isLunch = period === LUNCH_PERIOD;
 
+            if (isLunch) {
+              return (
+                <tr key="lunch" className="bg-[#FAF8FE] print:bg-transparent">
+                  <td className="p-1 lg:p-2.5 border-b border-r border-[#F3E5F5] text-center bg-purple-50/60 print:p-1">
+                    <span className="block font-black leading-none mb-0.5 lg:mb-1 tracking-tighter text-[11px] lg:text-base text-purple-800 font-extrabold">
+                      점심
+                    </span>
+                    <span className="block text-[8px] lg:text-[11px] font-bold text-[#BA68C8] scale-90 lg:scale-100">
+                      {PERIOD_TIMES[0]}
+                    </span>
+                  </td>
+                  <td 
+                    colSpan={weekRange.length} 
+                    className="p-1.5 lg:p-3 border-b border-[#FDFBFF] text-center bg-purple-50/20 text-[#7E57C2] font-black text-xs lg:text-sm tracking-widest select-none cursor-not-allowed print:bg-transparent"
+                  >
+                    <div className="flex items-center justify-center gap-2 py-1">
+                      <span className="font-extrabold text-purple-900">점심시간</span>
+                      <span className="text-[10px] lg:text-xs text-purple-400 font-bold tracking-normal">(12:40 ~ 13:40)</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            }
+
             return (
-              <tr key={period} className={cn(isLunch && "bg-[#FDFBFF]")}>
-                <td className={cn(
-                  "p-1 lg:p-3 border-b border-r border-[#F3E5F5] text-center print:p-1",
-                  isLunch && "bg-purple-50/50"
-                )}>
-                  <span className={cn(
-                    "block font-black leading-none mb-0.5 lg:mb-1 tracking-tighter",
-                    isLunch ? "text-[11px] lg:text-base text-purple-800 font-extrabold" : "text-sm lg:text-xl text-[#9575CD]"
-                  )}>
-                    {isLunch ? '점심' : period}
+              <tr key={period}>
+                <td className="p-1 lg:p-3 border-b border-r border-[#F3E5F5] text-center print:p-1">
+                  <span className="block font-black leading-none mb-0.5 lg:mb-1 tracking-tighter text-sm lg:text-xl text-[#9575CD]">
+                    {period}
                   </span>
                   <span className="block text-[8px] lg:text-[11px] font-bold text-[#BA68C8] scale-90 lg:scale-100">
                     {PERIOD_TIMES[period]}

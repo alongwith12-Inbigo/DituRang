@@ -68,7 +68,7 @@ export default function ReservationModal({
 
   const initialPeriod = editReservation?.period !== undefined 
     ? editReservation.period 
-    : (slot.period !== undefined ? slot.period : 1);
+    : (slot.period !== undefined && slot.period !== LUNCH_PERIOD ? slot.period : 1);
   const [selectedPeriods, setSelectedPeriods] = React.useState<number[]>([initialPeriod]);
 
   // Keep state in sync if slot or editReservation changes
@@ -78,7 +78,7 @@ export default function ReservationModal({
       setSelectedPeriods([editReservation.period]);
     } else if (slot.date) {
       setSelectedDate(slot.date);
-      if (slot.period !== undefined) {
+      if (slot.period !== undefined && slot.period !== LUNCH_PERIOD) {
         setSelectedPeriods([slot.period]);
       }
     }
@@ -289,6 +289,7 @@ export default function ReservationModal({
   };
 
   const togglePeriod = (p: number) => {
+    if (p === LUNCH_PERIOD) return; // 점심시간은 선택 불가
     if (selectedPeriods.includes(p)) {
       if (selectedPeriods.length > 1) setSelectedPeriods(prev => prev.filter(x => x !== p));
     } else {
@@ -305,7 +306,7 @@ export default function ReservationModal({
     }
   };
 
-  const scheduledPeriodsForSelectedDate = ALL_PERIODS.filter(p => isTutorScheduled(tutor, selectedDate, p));
+  const scheduledPeriodsForSelectedDate = ALL_PERIODS.filter(p => p !== LUNCH_PERIOD && isTutorScheduled(tutor, selectedDate, p));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-purple-900/10 backdrop-blur-sm overflow-hidden print:hidden">
@@ -570,42 +571,45 @@ export default function ReservationModal({
               </div>
               <div className="grid grid-cols-8 gap-1 sm:gap-1.5">
                 {ALL_PERIODS.map(p => {
+                  const isLunch = p === LUNCH_PERIOD;
                   const scheduled = isTutorScheduled(tutor, selectedDate, p);
                   const booked = isSlotBooked(reservations, tutor.id, selectedDate, p, editReservation?.id);
-                  const available = scheduled && !booked && !isClosed;
+                  const available = !isLunch && scheduled && !booked && !isClosed;
                   const isSelected = selectedPeriods.includes(p);
-                  const isLunch = p === LUNCH_PERIOD;
 
                   const label = isLunch ? '점심' : `${p}교시`;
                   const fullTitle = isLunch 
-                    ? `점심시간 (${PERIOD_START_TIMES[0]}) 선택` 
+                    ? `점심시간 (선택 불가)` 
                     : `${p}교시 (${PERIOD_START_TIMES[p]}) 선택`;
 
                   return (
                     <button
                       key={p}
                       type="button"
-                      disabled={!available}
-                      onClick={() => togglePeriod(p)}
+                      disabled={isLunch || !available}
+                      onClick={() => !isLunch && togglePeriod(p)}
                       title={
+                        isLunch ? '점심시간은 예약할 수 없습니다' :
                         !scheduled ? '근무 일정 없음' :
                         booked ? '이미 다른 예약이 완료된 교시입니다' :
                         fullTitle
                       }
                       className={cn(
-                        "h-8 sm:h-9 rounded-lg text-xs font-bold border transition-all flex items-center justify-center cursor-pointer select-none px-0.5",
-                        isSelected 
-                          ? (isLunch ? "bg-amber-500 border-amber-600 text-white shadow-xs font-black" : "bg-purple-600 border-purple-700 text-white shadow-xs font-black")
-                          : available 
-                            ? (isLunch ? "bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100/70 hover:border-amber-300" : "bg-white border-purple-200 text-purple-800 hover:bg-purple-50 hover:border-purple-300")
-                            : booked
-                              ? "bg-rose-50 border-rose-100 text-rose-300 cursor-not-allowed"
-                              : "bg-gray-100 border-transparent text-gray-300 cursor-not-allowed"
+                        "h-8 sm:h-9 rounded-lg text-xs font-bold border transition-all flex items-center justify-center select-none px-0.5",
+                        isLunch
+                          ? "bg-gray-100/90 border-gray-200 text-gray-400 cursor-not-allowed opacity-60"
+                          : isSelected 
+                            ? "bg-purple-600 border-purple-700 text-white shadow-xs font-black cursor-pointer"
+                            : available 
+                              ? "bg-white border-purple-200 text-purple-800 hover:bg-purple-50 hover:border-purple-300 cursor-pointer"
+                              : booked
+                                ? "bg-rose-50 border-rose-100 text-rose-300 cursor-not-allowed"
+                                : "bg-gray-100 border-transparent text-gray-300 cursor-not-allowed"
                       )}
                     >
                       <span className={cn(
                         "leading-none",
-                        isLunch ? "text-[10px] sm:text-[11px] font-extrabold" : "text-[11px] sm:text-xs"
+                        isLunch ? "text-[10px] sm:text-[11px] font-bold text-gray-400" : "text-[11px] sm:text-xs"
                       )}>
                         {label}
                       </span>
