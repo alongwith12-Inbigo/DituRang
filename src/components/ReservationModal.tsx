@@ -5,7 +5,7 @@ import { addDoc, collection, serverTimestamp, doc, setDoc, query, where, getDocs
 import { addWeeks, format, addDays, isBefore, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { db } from '../lib/firebase';
-import { Tutor, Reservation, DAYS } from '../types';
+import { Tutor, Reservation, DAYS, ALL_PERIODS, LUNCH_PERIOD, getPeriodLabel, comparePeriods } from '../types';
 import { cn } from '../lib/utils';
 import { 
   isPeriodInPast, 
@@ -72,7 +72,8 @@ export default function ReservationModal({
     // If the provided slot is valid, scheduled, in future, and not booked, use it!
     if (
       slot.date && 
-      slot.period > 0 && 
+      slot.period !== undefined &&
+      slot.period >= 0 && 
       isSlotAvailable(slot.date, slot.period, tutor, reservations, closedMonths)
     ) {
       return slot;
@@ -82,7 +83,7 @@ export default function ReservationModal({
     if (earliest) {
       return earliest;
     }
-    return { date: slot.date || format(new Date(), 'yyyy-MM-dd'), period: slot.period || 1 };
+    return { date: slot.date || format(new Date(), 'yyyy-MM-dd'), period: slot.period !== undefined ? slot.period : 1 };
   }, [editReservation, slot, tutor, reservations, closedMonths]);
 
   // Date selection state: allow changing date directly in modal
@@ -123,7 +124,7 @@ export default function ReservationModal({
   });
 
   const [selectedPeriods, setSelectedPeriods] = React.useState<number[]>(
-    editReservation ? [editReservation.period] : (initialSlot.period > 0 ? [initialSlot.period] : [1])
+    editReservation ? [editReservation.period] : (initialSlot.period !== undefined ? [initialSlot.period] : [1])
   );
   const [isRecurring, setIsRecurring] = React.useState(false);
   const [weeksToRepeat, setWeeksToRepeat] = React.useState(1);
@@ -160,7 +161,7 @@ export default function ReservationModal({
   // When selectedDate changes, adjust periods to only valid available (not past, not booked) periods
   React.useEffect(() => {
     if (editReservation) return;
-    const availablePeriods = [1, 2, 3, 4, 5, 6, 7].filter(p => 
+    const availablePeriods = ALL_PERIODS.filter(p => 
       isSlotAvailable(selectedDate, p, tutor, reservations, closedMonths, new Date())
     );
     if (availablePeriods.length > 0) {
@@ -236,13 +237,14 @@ export default function ReservationModal({
         const currentDate = format(addWeeks(new Date(selectedDate), w), 'yyyy-MM-dd');
         for (const p of selectedPeriods) {
           if (!isTutorScheduled(tutor, currentDate, p)) continue;
+          const pLabel = getPeriodLabel(p);
           if (isPeriodInPast(currentDate, p)) {
-            alert(`${currentDate} ${p}교시는 이미 시간이 종료되어 예약할 수 없습니다.`);
+            alert(`${currentDate} ${pLabel}는 이미 시간이 종료되어 예약할 수 없습니다.`);
             setIsSubmitting(false);
             return;
           }
           if (isSlotBooked(reservations, tutor.id, currentDate, p, editReservation?.id)) {
-            alert(`${currentDate} ${p}교시는 이미 예약이 완료되었습니다. 다른 시간을 선택해주세요.`);
+            alert(`${currentDate} ${pLabel}는 이미 예약이 완료되었습니다. 다른 시간을 선택해주세요.`);
             setIsSubmitting(false);
             return;
           }
@@ -267,7 +269,8 @@ export default function ReservationModal({
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
           const docData = snapshot.docs[0].data();
-          return `${s.date} (${s.period}교시): ${docData.teacherName} 선생님 이미 예약됨`;
+          const pLabel = getPeriodLabel(s.period);
+          return `${s.date} (${pLabel}): ${docData.teacherName} 선생님 이미 예약됨`;
         }
         return null;
       });
@@ -318,24 +321,25 @@ export default function ReservationModal({
     if (selectedPeriods.includes(p)) {
       if (selectedPeriods.length > 1) setSelectedPeriods(prev => prev.filter(x => x !== p));
     } else {
+      const pLabel = getPeriodLabel(p);
       if (!isTutorScheduled(tutor, selectedDate, p)) {
-        alert(`${DAYS[(new Date(selectedDate).getDay() + 6) % 7]}요일 ${p}교시는 튜터님의 근무 일정이 아닙니다.`);
+        alert(`${DAYS[(new Date(selectedDate).getDay() + 6) % 7]}요일 ${pLabel}는 튜터님의 근무 일정이 아닙니다.`);
         return;
       }
       if (isPeriodInPast(selectedDate, p)) {
-        alert(`선택하신 ${p}교시는 이미 시간이 종료되어 신청할 수 없습니다.`);
+        alert(`선택하신 ${pLabel}는 이미 시간이 종료되어 신청할 수 없습니다.`);
         return;
       }
       if (isSlotBooked(reservations, tutor.id, selectedDate, p, editReservation?.id)) {
-        alert(`선택하신 ${p}교시는 이미 다른 예약이 완료되었습니다.`);
+        alert(`선택하신 ${pLabel}는 이미 다른 예약이 완료되었습니다.`);
         return;
       }
-      setSelectedPeriods(prev => [...prev, p].sort((a,b) => a-b));
+      setSelectedPeriods(prev => [...prev, p].sort(comparePeriods));
     }
   };
 
-  const scheduledPeriodsForSelectedDate = [1, 2, 3, 4, 5, 6, 7].filter(p => isTutorScheduled(tutor, selectedDate, p));
-  const availablePeriodsForSelectedDate = [1, 2, 3, 4, 5, 6, 7].filter(p => 
+  const scheduledPeriodsForSelectedDate = ALL_PERIODS.filter(p => isTutorScheduled(tutor, selectedDate, p));
+  const availablePeriodsForSelectedDate = ALL_PERIODS.filter(p => 
     isSlotAvailable(selectedDate, p, tutor, reservations, closedMonths, new Date(), editReservation?.id)
   );
 
@@ -621,18 +625,24 @@ export default function ReservationModal({
                   현재 예약 가능한 교시만 활성화됩니다
                 </span>
               </div>
-              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-                {[1, 2, 3, 4, 5, 6, 7].map(p => {
+              <div className="grid grid-cols-8 gap-1 sm:gap-1.5">
+                {ALL_PERIODS.map(p => {
                   const scheduled = isTutorScheduled(tutor, selectedDate, p);
                   const inPast = isPeriodInPast(selectedDate, p);
                   const booked = isSlotBooked(reservations, tutor.id, selectedDate, p, editReservation?.id);
                   const available = scheduled && !inPast && !booked && !isClosed;
                   const isSelected = selectedPeriods.includes(p);
+                  const isLunch = p === LUNCH_PERIOD;
 
                   let statusText = '';
                   if (!scheduled) statusText = '휴무';
                   else if (inPast) statusText = '종료';
                   else if (booked) statusText = '마감';
+
+                  const label = isLunch ? '점심' : `${p}교시`;
+                  const fullTitle = isLunch 
+                    ? `점심시간 (${PERIOD_START_TIMES[0]}) 선택` 
+                    : `${p}교시 (${PERIOD_START_TIMES[p]}) 선택`;
 
                   return (
                     <button
@@ -644,21 +654,24 @@ export default function ReservationModal({
                         !scheduled ? '근무 일정 없음' :
                         inPast ? '시간 경과 (예약 불가)' :
                         booked ? '이미 다른 예약이 완료된 교시입니다' :
-                        `${p}교시 (${PERIOD_START_TIMES[p]}) 선택`
+                        fullTitle
                       }
                       className={cn(
                         "h-8 sm:h-9 rounded-lg text-xs font-bold border transition-all flex flex-col items-center justify-center cursor-pointer select-none px-0.5",
                         isSelected 
-                          ? "bg-purple-600 border-purple-700 text-white shadow-xs font-black" 
+                          ? (isLunch ? "bg-amber-500 border-amber-600 text-white shadow-xs font-black" : "bg-purple-600 border-purple-700 text-white shadow-xs font-black")
                           : available 
-                            ? "bg-white border-purple-200 text-purple-800 hover:bg-purple-50 hover:border-purple-300" 
+                            ? (isLunch ? "bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100/70 hover:border-amber-300" : "bg-white border-purple-200 text-purple-800 hover:bg-purple-50 hover:border-purple-300")
                             : booked
                               ? "bg-rose-50 border-rose-100 text-rose-300 cursor-not-allowed"
                               : "bg-gray-100 border-transparent text-gray-300 cursor-not-allowed"
                       )}
                     >
-                      <span className="leading-none text-[11px] sm:text-xs">
-                        {p}교시
+                      <span className={cn(
+                        "leading-none",
+                        isLunch ? "text-[10px] sm:text-[11px] font-extrabold" : "text-[11px] sm:text-xs"
+                      )}>
+                        {label}
                       </span>
                       {statusText && !isSelected && (
                         <span className={cn(

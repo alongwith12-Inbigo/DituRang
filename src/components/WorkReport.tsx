@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { X, Printer, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getMonth, getYear, parseISO, addMonths, subMonths } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Tutor, Reservation, PERIOD_TIMES } from '../types';
+import { Tutor, Reservation, PERIOD_TIMES, ALL_PERIODS, comparePeriods } from '../types';
 import { cn } from '../lib/utils';
 
 interface WorkReportProps {
@@ -33,7 +33,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
              getYear(rDate) === getYear(selectedMonth) && 
              getMonth(rDate) === getMonth(selectedMonth);
     })
-    .sort((a, b) => a.date.localeCompare(b.date) || a.period - b.period);
+    .sort((a, b) => a.date.localeCompare(b.date) || comparePeriods(a.period, b.period));
 
   // Helper to check if slot is active
   const getWeekStart = (dateStr: string) => {
@@ -57,7 +57,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
   // First, identify all days in the month
   eachDayOfInterval({ start: monthStart, end: monthEnd }).forEach(day => {
     const dateStr = format(day, 'yyyy-MM-dd');
-    const dayActivePeriods = [1, 2, 3, 4, 5, 6, 7].filter(p => isSlotActive(dateStr, p));
+    const dayActivePeriods = ALL_PERIODS.filter(p => isSlotActive(dateStr, p));
     
     if (dayActivePeriods.length > 0) {
       const dayReservations = reservations.filter(r => r.tutorId === tutor.id && r.date === dateStr);
@@ -94,7 +94,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
     .filter(dateStr => dateStr >= '2026-04-28') // Enforce system start date
     .sort()
     .map(date => {
-    const dayRes = [...groupedByDate[date]].sort((a, b) => a.period - b.period);
+    const dayRes = [...groupedByDate[date]].sort((a, b) => comparePeriods(a.period, b.period));
     
     // Find the first "real" reservation (not a default placeholder)
     const realRes = dayRes.filter(r => r.id && !r.id.startsWith('default-'));
@@ -131,7 +131,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
     return {
       date,
       count: dayRes.length,
-      periods: dayRes.map(r => r.period).sort((a,b) => a-b).join(', '),
+      periods: dayRes.map(r => (r.period === 0 ? '점심' : `${r.period}교시`)).join(', '),
       description: `${firstSummary}${hasMore ? ' 등' : ''}`
     };
   });
@@ -249,7 +249,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                     <tr key={idx} className="h-10 print:h-8">
                       <td>{idx + 1}</td>
                       <td className="text-[11px] print:text-[11px] whitespace-nowrap">{format(parseISO(row.date), 'yyyy. MM. dd. (EEE)', { locale: ko })}</td>
-                      <td className="text-[11px] print:text-[11px] whitespace-nowrap">{row.count}시간 ({row.periods}교시)</td>
+                      <td className="text-[11px] print:text-[11px] whitespace-nowrap">{row.count}시간 ({row.periods})</td>
                       <td className="task-description-cell font-medium text-[11.5px] print:text-[11px]">
                         <div className="line-clamp-2 leading-[14px] print:leading-[12px]">
                           {row.description}

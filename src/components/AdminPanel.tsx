@@ -4,7 +4,7 @@ import { X, Save, Lock, Unlock, UserPlus, Trash2, CheckCircle2, Settings, Check,
 import { setDoc, doc, updateDoc, collection, addDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { startOfWeek, startOfToday, addWeeks, addDays, format, parseISO } from 'date-fns';
 import { db, auth } from '../lib/firebase';
-import { Tutor, DAYS, SchoolEvent, Reservation } from '../types';
+import { Tutor, DAYS, SchoolEvent, Reservation, ALL_PERIODS, LUNCH_PERIOD, PERIOD_TIMES, comparePeriods } from '../types';
 import { cn } from '../lib/utils';
 import TutorSalaryReport from './TutorSalaryReport';
 
@@ -304,7 +304,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
           if (dayPeriods.includes(period)) {
             schedule[dayIdx] = dayPeriods.filter(p => p !== period);
           } else {
-            schedule[dayIdx] = [...dayPeriods, period].sort((a,b) => a-b);
+            schedule[dayIdx] = [...dayPeriods, period].sort(comparePeriods);
           }
           return { ...t, workSchedule: schedule };
         } else {
@@ -315,7 +315,7 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
           if (dayPeriods.includes(period)) {
             currentWeekSchedule[dayIdx] = dayPeriods.filter(p => p !== period);
           } else {
-            currentWeekSchedule[dayIdx] = [...dayPeriods, period].sort((a,b) => a-b);
+            currentWeekSchedule[dayIdx] = [...dayPeriods, period].sort(comparePeriods);
           }
           
           overrides[targetWeekStart] = currentWeekSchedule;
@@ -707,30 +707,53 @@ export default function AdminPanel({ tutors, schoolEvents, onClose, closedMonths
                       </div>
                     ))}
 
-                    {[1, 2, 3, 4, 5, 6, 7].map(period => (
-                      <React.Fragment key={period}>
-                        <div className="bg-white p-2 rounded-2xl border border-[#F1F3F4] text-center shadow-sm">
-                          <span className="text-xs font-black text-[#B0BEC5]">{period}</span>
-                        </div>
-                        {[0, 1, 2, 3, 4].map(dayIdx => {
-                          const isActive = currentSchedule[dayIdx]?.includes(period);
-                          return (
-                            <button
-                              key={`${dayIdx}-${period}`}
-                              onClick={() => toggleDayPeriod(tutor.id, dayIdx, period)}
-                              className={cn(
-                                "group aspect-square rounded-2xl border transition-all flex items-center justify-center",
-                                isActive
-                                  ? (tutor.id === 'tutor1' ? "bg-[#FFF0F3] border-[#FFD1DC] text-[#EC407A] shadow-sm" : "bg-[#F0F7FF] border-[#B3E5FC] text-[#039BE5] shadow-sm shadow-sky-50")
-                                  : "bg-white border-[#F1F3F4] text-[#ECEFF1] hover:bg-[#F9F9F9]"
-                              )}
-                            >
-                              <Check size={18} className={cn("transition-all", isActive ? "scale-100" : "scale-0 group-hover:scale-50 opacity-20")} />
-                            </button>
-                          );
-                        })}
-                      </React.Fragment>
-                    ))}
+                    {ALL_PERIODS.map(period => {
+                      const isLunch = period === LUNCH_PERIOD;
+                      return (
+                        <React.Fragment key={period}>
+                          <div className={cn(
+                            "p-2 rounded-2xl border text-center shadow-sm flex flex-col items-center justify-center",
+                            isLunch ? "bg-amber-50 border-amber-200" : "bg-white border-[#F1F3F4]"
+                          )}>
+                            <span className={cn(
+                              "font-black leading-tight",
+                              isLunch ? "text-[11px] text-amber-800" : "text-xs text-[#B0BEC5]"
+                            )}>
+                              {isLunch ? '점심' : period}
+                            </span>
+                            <span className={cn(
+                              "text-[8px] font-semibold tracking-tighter mt-0.5",
+                              isLunch ? "text-amber-600/90" : "text-gray-400"
+                            )}>
+                              {PERIOD_TIMES[period]}
+                            </span>
+                          </div>
+                          {[0, 1, 2, 3, 4].map(dayIdx => {
+                            const isActive = currentSchedule[dayIdx]?.includes(period);
+                            return (
+                              <button
+                                key={`${dayIdx}-${period}`}
+                                type="button"
+                                onClick={() => toggleDayPeriod(tutor.id, dayIdx, period)}
+                                title={`${["월", "화", "수", "목", "금"][dayIdx]}요일 ${isLunch ? '점심시간' : `${period}교시`} ${isActive ? '근무 해제' : '근무 활성화'}`}
+                                className={cn(
+                                  "group aspect-square rounded-2xl border transition-all flex items-center justify-center cursor-pointer",
+                                  isActive
+                                    ? (isLunch 
+                                        ? "bg-amber-100 border-amber-300 text-amber-700 shadow-sm" 
+                                        : (tutor.id === 'tutor1' ? "bg-[#FFF0F3] border-[#FFD1DC] text-[#EC407A] shadow-sm" : "bg-[#F0F7FF] border-[#B3E5FC] text-[#039BE5] shadow-sm shadow-sky-50"))
+                                    : (isLunch 
+                                        ? "bg-amber-50/20 border-dashed border-amber-200/60 text-amber-200 hover:bg-amber-50/50" 
+                                        : "bg-white border-[#F1F3F4] text-[#ECEFF1] hover:bg-[#F9F9F9]")
+                                )}
+                              >
+                                <Check size={18} className={cn("transition-all", isActive ? "scale-100" : "scale-0 group-hover:scale-50 opacity-20")} />
+                              </button>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 </div>
               </section>

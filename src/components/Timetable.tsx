@@ -10,6 +10,8 @@ import {
   PERIOD_TIMES, 
   DAYS, 
   SchoolEvent,
+  ALL_PERIODS,
+  LUNCH_PERIOD
 } from '../types';
 import { cn } from '../lib/utils';
 
@@ -53,7 +55,7 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
     }
   };
 
-  const periods = [1, 2, 3, 4, 'lunch', 5, 6, 7];
+  const periods = ALL_PERIODS;
 
   return (
     <div className="overflow-x-auto -mx-1 pb-4 lg:mx-0 lg:pb-0">
@@ -88,27 +90,24 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
           </tr>
         </thead>
         <tbody>
-          {periods.map((p, pIdx) => {
-            if (p === 'lunch') {
-              return (
-                <tr key="lunch" className="bg-[#FCFBFF] print:bg-transparent">
-                  <td className="p-1 border-b border-r border-[#F3E5F5] text-center">
-                    <span className="text-[9px] lg:text-[13px] font-black text-[#9575CD] uppercase tracking-widest leading-none">점심</span>
-                  </td>
-                  <td colSpan={5} className="p-0.5 border-b border-[#F3E5F5] text-center italic text-[#BA68C8] text-[9px] lg:text-[11px] font-bold tracking-widest leading-none uppercase">
-                    {PERIOD_TIMES.l} (12:40 - 13:40)
-                  </td>
-                </tr>
-              );
-            }
-
-            const period = p as number;
+          {periods.map((period) => {
+            const isLunch = period === LUNCH_PERIOD;
 
             return (
-              <tr key={period}>
-                <td className="p-1 lg:p-3 border-b border-r border-[#F3E5F5] text-center print:p-1">
-                  <span className="block text-sm lg:text-xl font-black text-[#9575CD] leading-none mb-0.5 lg:mb-1 tracking-tighter">{period}</span>
-                  <span className="block text-[8px] lg:text-[11px] font-bold text-[#BA68C8] scale-90 lg:scale-100">{PERIOD_TIMES[period as keyof typeof PERIOD_TIMES]}</span>
+              <tr key={period} className={cn(isLunch && "bg-[#FDFBFF]")}>
+                <td className={cn(
+                  "p-1 lg:p-3 border-b border-r border-[#F3E5F5] text-center print:p-1",
+                  isLunch && "bg-purple-50/50"
+                )}>
+                  <span className={cn(
+                    "block font-black leading-none mb-0.5 lg:mb-1 tracking-tighter",
+                    isLunch ? "text-[11px] lg:text-base text-purple-800 font-extrabold" : "text-sm lg:text-xl text-[#9575CD]"
+                  )}>
+                    {isLunch ? '점심' : period}
+                  </span>
+                  <span className="block text-[8px] lg:text-[11px] font-bold text-[#BA68C8] scale-90 lg:scale-100">
+                    {PERIOD_TIMES[period]}
+                  </span>
                 </td>
                 {weekRange.map((day, dIdx) => {
                   const reservation = getReservation(day.date, period);

@@ -10,7 +10,7 @@
         "isActive": { "type": "boolean" },
         "workSchedule": {
           "type": "object",
-          "description": "Map of dayIndex (0-4 for Mon-Fri) to array of active periods (1-7)"
+          "description": "Map of dayIndex (0-4 for Mon-Fri) to array of active periods (0-7, where 0 is lunch)"
         }
       },
       "required": ["id", "name", "isActive"]
@@ -22,7 +22,7 @@
       "properties": {
         "tutorId": { "type": "string" },
         "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
-        "period": { "type": "number", "description": "1-7" },
+        "period": { "type": "number", "description": "0-7, where 0 is lunch" },
         "reason": { "type": "string" },
         "type": { "type": "string", "enum": ["priority", "normal"] },
         "teacherName": { "type": "string" },

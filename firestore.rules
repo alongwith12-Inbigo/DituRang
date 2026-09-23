@@ -24,7 +24,7 @@ service cloud.firestore {
     function isValidReservation(data) {
       return data.tutorId is string &&
              data.date is string && data.date.size() == 10 &&
-             data.period is number && data.period >= 1 && data.period <= 7 &&
+             data.period is number && data.period >= 0 && data.period <= 7 &&
              data.reason is string && data.reason.size() <= 500 &&
              data.type in ['priority', 'normal'] &&
              data.teacherName is string && data.teacherName.size() <= 100;

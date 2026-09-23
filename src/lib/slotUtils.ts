@@ -1,11 +1,12 @@
 import { format, addDays } from 'date-fns';
-import { Tutor, Reservation } from '../types';
+import { Tutor, Reservation, ALL_PERIODS, LUNCH_PERIOD } from '../types';
 
 export const PERIOD_START_TIMES: Record<number, string> = {
   1: "08:50",
   2: "09:50",
   3: "10:50",
   4: "11:50",
+  0: "12:40",
   5: "13:40",
   6: "14:40",
   7: "15:40"
@@ -104,8 +105,8 @@ export function findEarliestAvailableSlot(
     const monthStr = dateStr.substring(0, 7);
     if (closedMonths?.includes(monthStr)) continue;
 
-    // Check periods 1 through 7
-    for (let p = 1; p <= 7; p++) {
+    // Check all periods in chronological order (1, 2, 3, 4, lunch(0), 5, 6, 7)
+    for (const p of ALL_PERIODS) {
       if (isSlotAvailable(dateStr, p, tutor, reservations, closedMonths, now)) {
         return { date: dateStr, period: p };
       }
@@ -119,7 +120,7 @@ export function findEarliestAvailableSlot(
     if (dayIdx < 0 || dayIdx > 4) continue;
 
     const dateStr = format(candidateDate, 'yyyy-MM-dd');
-    for (let p = 1; p <= 7; p++) {
+    for (const p of ALL_PERIODS) {
       if (isTutorScheduled(tutor, dateStr, p)) {
         return { date: dateStr, period: p };
       }

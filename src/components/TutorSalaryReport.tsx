@@ -1,7 +1,7 @@
 import React from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, addDays, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Tutor, Reservation, SchoolEvent } from '../types';
+import { Tutor, Reservation, SchoolEvent, ALL_PERIODS, LUNCH_PERIOD, comparePeriods } from '../types';
 import { cn } from '../lib/utils';
 import { Coins, Clock, Download, Printer, ChevronRight, Calendar, UserCheck, CheckCircle2 } from 'lucide-react';
 
@@ -113,7 +113,7 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
           const weekStart = getWeekStart(dateStr);
 
           // Find active periods (respecting 2026-04-28 start date)
-          const activePeriods = [1, 2, 3, 4, 5, 6, 7].filter(p => isSlotActive(tutor, dateStr, p));
+          const activePeriods = ALL_PERIODS.filter(p => isSlotActive(tutor, dateStr, p));
           const hours = activePeriods.length;
 
           if (!weeksMap[weekStart]) {
@@ -707,8 +707,8 @@ export default function TutorSalaryReport({ tutors, reservations = [], schoolEve
                           <p className="text-[10px] font-bold text-slate-500">{d.date.slice(5)} ({d.dayName})</p>
                           <p className="font-black mt-0.5 text-xs">{d.hours}시간</p>
                           {d.periods.length > 0 && (
-                            <p className="text-[9px] text-slate-400 font-mono mt-0.5">
-                              {d.periods.join(',')}교시
+                            <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                              {[...d.periods].sort(comparePeriods).map(p => p === 0 ? '점심' : `${p}교시`).join(',')}
                             </p>
                           )}
                         </div>
