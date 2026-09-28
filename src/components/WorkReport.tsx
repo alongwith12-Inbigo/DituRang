@@ -6,6 +6,47 @@ import { ko } from 'date-fns/locale';
 import { Tutor, Reservation, PERIOD_TIMES, ALL_PERIODS, comparePeriods } from '../types';
 import { cn } from '../lib/utils';
 
+function formatPeriodsSummary(periods: number[]): string {
+  if (!periods || periods.length === 0) return '';
+  const uniquePeriods = Array.from(new Set(periods)).sort(comparePeriods);
+  const ranges: string[] = [];
+  let start: number | null = null;
+  let end: number | null = null;
+
+  for (let i = 0; i < uniquePeriods.length; i++) {
+    const p = uniquePeriods[i];
+    if (p === 0) {
+      if (start !== null && end !== null) {
+        ranges.push(start === end ? `${start}` : `${start}~${end}`);
+        start = null;
+        end = null;
+      }
+      ranges.push('점심');
+      continue;
+    }
+    if (start === null) {
+      start = p;
+      end = p;
+    } else if (end !== null && p === end + 1) {
+      end = p;
+    } else {
+      ranges.push(start === end ? `${start}` : `${start}~${end}`);
+      start = p;
+      end = p;
+    }
+  }
+
+  if (start !== null && end !== null) {
+    ranges.push(start === end ? `${start}` : `${start}~${end}`);
+  }
+
+  const rangeStr = ranges.join(', ');
+  if (rangeStr && !rangeStr.endsWith('점심')) {
+    return `${rangeStr}교시`;
+  }
+  return rangeStr;
+}
+
 interface WorkReportProps {
   tutor: Tutor;
   reservations: Reservation[];
@@ -131,7 +172,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
     return {
       date,
       count: dayRes.length,
-      periods: dayRes.map(r => (r.period === 0 ? '점심' : `${r.period}교시`)).join(', '),
+      periods: formatPeriodsSummary(dayRes.map(r => r.period)),
       description: `${firstSummary}${hasMore ? ' 등' : ''}`
     };
   });
@@ -249,7 +290,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                     <tr key={idx} className="h-10 print:h-8">
                       <td>{idx + 1}</td>
                       <td className="text-[11px] print:text-[11px] whitespace-nowrap">{format(parseISO(row.date), 'yyyy. MM. dd. (EEE)', { locale: ko })}</td>
-                      <td className="text-[11px] print:text-[11px] whitespace-nowrap">{row.count}시간 ({row.periods})</td>
+                      <td className="text-[11px] print:text-[11px] whitespace-nowrap">{row.periods ? `${row.count}시간(${row.periods})` : `${row.count}시간`}</td>
                       <td className="task-description-cell font-medium text-[11.5px] print:text-[11px]">
                         <div className="line-clamp-2 leading-[14px] print:leading-[12px]">
                           {row.description}
