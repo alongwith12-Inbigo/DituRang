@@ -222,28 +222,40 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
         <div className="flex-1 overflow-y-auto p-12 bg-[#F9F8FD]/50 print:bg-white print:p-0 print:overflow-visible">
           {/* Print Preview Area */}
           <div className="report-container bg-white shadow-xl mx-auto print:shadow-none print:mx-0 print:w-full print:min-h-0 print:p-0">
-            <div ref={printRef} className="w-full text-black font-sans leading-relaxed print:p-0">
+            <div ref={printRef} className="w-full h-full text-black font-sans leading-relaxed flex flex-col justify-between print:p-0">
               <style dangerouslySetInnerHTML={{ __html: `
                 .report-container {
                   width: 210mm;
+                  height: 297mm;
                   min-height: 297mm;
-                  padding: 20mm;
+                  max-height: 297mm;
+                  padding: 30mm 15mm 15mm 15mm;
                   box-sizing: border-box;
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: space-between;
+                  position: relative;
                 }
                 @media print {
-                  @page { size: A4; margin: 3.0cm 1.5cm 1.5cm 1.5cm; }
+                  @page { size: A4 portrait; margin: 3.0cm 1.5cm 1.5cm 1.5cm; }
                   body { margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
                   .report-container {
                     width: 100% !important;
-                    min-height: 0 !important;
+                    height: 250mm !important;
+                    min-height: 250mm !important;
+                    max-height: 250mm !important;
                     padding: 0 !important;
                     margin: 0 !important;
                     box-shadow: none !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                    page-break-after: avoid !important;
                     page-break-inside: avoid !important;
                     break-inside: avoid !important;
                   }
                   .report-table th, .report-table td {
-                    padding: 3px 4px !important;
+                    padding: 2.5px 4px !important;
                   }
                   .report-table td.task-description-cell {
                     padding-left: 10px !important;
@@ -253,7 +265,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                 .report-table { border-collapse: collapse; width: 100%; border: 1.5px solid #333; table-layout: fixed; }
                 .report-table th, .report-table td {
                   border: 1px solid #333 !important;
-                  padding: 6px 4px;
+                  padding: 5px 4px;
                   word-break: break-all;
                   vertical-align: middle;
                 }
@@ -270,59 +282,61 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                 }
               `}} />
               
-              <div className="text-center mb-12 print:mb-6 mt-4 print:mt-6">
-                <h1 className="text-3xl print:text-2xl font-black tracking-[0.3em] mb-10 print:mb-4 border-b-4 border-black inline-block pb-2">디지털 튜터 근무확인서</h1>
-                <div className="flex justify-end gap-12 mt-4 print:mt-1 pr-4">
-                  <span className="text-lg print:text-base font-bold">강사명: <span className="underline underline-offset-[12px] px-8 text-xl print:text-lg font-black">{tutor.name}</span> (서명/인)</span>
+              <div className="w-full">
+                <div className="text-center mb-8 print:mb-6 mt-0">
+                  <h1 className="text-3xl print:text-2xl font-black tracking-[0.3em] mb-8 print:mb-4 border-b-4 border-black inline-block pb-2">디지털 튜터 근무확인서</h1>
+                  <div className="flex justify-end gap-12 mt-2 print:mt-1 pr-2">
+                    <span className="text-lg print:text-base font-bold">강사명: <span className="underline underline-offset-[12px] px-8 text-xl print:text-lg font-black">{tutor.name}</span> (서명/인)</span>
+                  </div>
                 </div>
+
+                <table className="report-table text-[12px] text-center">
+                  <thead>
+                    <tr className="bg-gray-100/50 h-10 print:h-[28px]">
+                      <th className="w-[45px]">연번</th>
+                      <th className="w-[125px]">일 시</th>
+                      <th className="w-[125px]">근무 시간</th>
+                      <th className="">주 요 업 무</th>
+                      <th className="w-[56px]">확 인</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rowData.map((row, idx) => (
+                      <tr key={idx} className="h-9 print:h-[27px]">
+                        <td>{idx + 1}</td>
+                        <td className="text-[11px] print:text-[10.5px] whitespace-nowrap">{format(parseISO(row.date), 'yyyy. MM. dd. (EEE)', { locale: ko })}</td>
+                        <td className="text-[11px] print:text-[10.5px] whitespace-nowrap">{row.periods ? `${row.count}시간(${row.periods})` : `${row.count}시간`}</td>
+                        <td className="task-description-cell font-medium text-[11.5px] print:text-[10.5px]">
+                          <div className="line-clamp-2 leading-[14px] print:leading-[12px]">
+                            {row.description}
+                          </div>
+                        </td>
+                        <td></td>
+                      </tr>
+                    ))}
+                    {emptyRows.map((_, idx) => (
+                      <tr key={`empty-${idx}`} className="h-9 print:h-[27px]">
+                        <td>{rowData.length + idx + 1}</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                      </tr>
+                    ))}
+                    <tr className="h-9 print:h-[27px] bg-gray-50/50 font-bold">
+                      <td colSpan={2}>계</td>
+                      <td className="text-[11px] print:text-[10.5px]">{rowData.reduce((acc, row) => acc + row.count, 0)}시간</td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
-              <table className="report-table text-[12px] text-center">
-                <thead>
-                  <tr className="bg-gray-100/50 h-10 print:h-[28px]">
-                    <th className="w-[45px]">연번</th>
-                    <th className="w-[125px]">일 시</th>
-                    <th className="w-[125px]">근무 시간</th>
-                    <th className="">주 요 업 무</th>
-                    <th className="w-[56px]">확 인</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rowData.map((row, idx) => (
-                    <tr key={idx} className="h-10 print:h-[27px]">
-                      <td>{idx + 1}</td>
-                      <td className="text-[11px] print:text-[10.5px] whitespace-nowrap">{format(parseISO(row.date), 'yyyy. MM. dd. (EEE)', { locale: ko })}</td>
-                      <td className="text-[11px] print:text-[10.5px] whitespace-nowrap">{row.periods ? `${row.count}시간(${row.periods})` : `${row.count}시간`}</td>
-                      <td className="task-description-cell font-medium text-[11.5px] print:text-[10.5px]">
-                        <div className="line-clamp-2 leading-[14px] print:leading-[12px]">
-                          {row.description}
-                        </div>
-                      </td>
-                      <td></td>
-                    </tr>
-                  ))}
-                  {emptyRows.map((_, idx) => (
-                    <tr key={`empty-${idx}`} className="h-10 print:h-[27px]">
-                      <td>{rowData.length + idx + 1}</td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                    </tr>
-                  ))}
-                  <tr className="h-10 print:h-[27px] bg-gray-50/50 font-bold">
-                    <td colSpan={2}>계</td>
-                    <td className="text-[11px] print:text-[10.5px]">{rowData.reduce((acc, row) => acc + row.count, 0)}시간</td>
-                    <td colSpan={2}></td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <div className="mt-12 print:mt-6 flex flex-col items-center gap-12 print:gap-4">
+              <div className="w-full mt-auto flex flex-col items-center pt-8 print:pt-6">
                 <p className="text-lg print:text-base font-bold">위와 같이 근무하였음을 확인합니다.</p>
                 
-                <div className="w-full flex justify-end pr-8">
-                  <div className="flex flex-col gap-8 print:gap-3 w-64">
+                <div className="w-full flex justify-end pr-6 mt-6 print:mt-4">
+                  <div className="flex flex-col gap-5 print:gap-3 w-64">
                     <div className="flex items-center justify-between border-b border-black pb-1">
                       <span className="font-bold">확인 일자:</span>
                       <span className="text-gray-400">2026년 &nbsp;&nbsp;&nbsp;&nbsp;월 &nbsp;&nbsp;&nbsp;&nbsp;일</span>
@@ -334,8 +348,10 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                   </div>
                 </div>
 
-                <div className="mt-12 print:mt-4 text-2xl print:text-xl font-black tracking-widest uppercase">
-                   인천비즈니스고등학교
+                <div className="mt-10 print:mt-8 pb-1 print:pb-0 text-center">
+                  <span className="font-serif font-black text-2xl print:text-2xl tracking-[0.4em] text-black inline-block pl-[0.4em]">
+                    인천비즈니스고등학교
+                  </span>
                 </div>
               </div>
             </div>
