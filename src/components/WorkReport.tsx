@@ -177,7 +177,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
     };
   });
 
-  const emptyRows = Array.from({ length: Math.max(0, 15 - rowData.length) });
+  const emptyRows = Array.from({ length: Math.max(0, 13 - rowData.length) });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-purple-900/10 backdrop-blur-sm overflow-hidden print:bg-white print:p-0 print:block print:overflow-visible">
@@ -231,7 +231,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                   box-sizing: border-box;
                 }
                 @media print {
-                  @page { size: A4; margin: 3.0cm 1.5cm 1.5cm 1.5cm; }
+                  @page { size: A4 portrait; margin: 15mm 15mm 15mm 15mm; }
                   body { margin: 0; padding: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
                   .report-container {
                     width: 100% !important;
@@ -239,13 +239,15 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                     padding: 0 !important;
                     margin: 0 !important;
                     box-shadow: none !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
                   }
                   .report-table th, .report-table td {
-                    padding: 3px 4px !important;
+                    padding: 2px 4px !important;
                   }
                   .report-table td.task-description-cell {
-                    padding-left: 12px !important;
-                    padding-right: 12px !important;
+                    padding-left: 10px !important;
+                    padding-right: 10px !important;
                   }
                 }
                 .report-table { border-collapse: collapse; width: 100%; border: 1.5px solid #333; table-layout: fixed; }
@@ -268,8 +270,8 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                 }
               `}} />
               
-              <div className="text-center mb-12 print:mb-6 mt-4 print:mt-6">
-                <h1 className="text-3xl print:text-2xl font-black tracking-[0.3em] mb-10 print:mb-4 border-b-4 border-black inline-block pb-2">디지털 튜터 근무확인서</h1>
+              <div className="text-center mb-12 print:mb-3 mt-4 print:mt-1">
+                <h1 className="text-3xl print:text-2xl font-black tracking-[0.3em] mb-10 print:mb-2 border-b-4 border-black inline-block pb-2">디지털 튜터 근무확인서</h1>
                 <div className="flex justify-end gap-12 mt-4 print:mt-1 pr-4">
                   <span className="text-lg print:text-base font-bold">강사명: <span className="underline underline-offset-[12px] px-8 text-xl print:text-lg font-black">{tutor.name}</span> (서명/인)</span>
                 </div>
@@ -277,7 +279,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
 
               <table className="report-table text-[12px] text-center">
                 <thead>
-                  <tr className="bg-gray-100/50 h-10 print:h-8">
+                  <tr className="bg-gray-100/50 h-10 print:h-7">
                     <th className="w-[45px]">연번</th>
                     <th className="w-[125px]">일 시</th>
                     <th className="w-[125px]">근무 시간</th>
@@ -287,7 +289,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                 </thead>
                 <tbody>
                   {rowData.map((row, idx) => (
-                    <tr key={idx} className="h-10 print:h-8">
+                    <tr key={idx} className="h-10 print:h-7">
                       <td>{idx + 1}</td>
                       <td className="text-[11px] print:text-[11px] whitespace-nowrap">{format(parseISO(row.date), 'yyyy. MM. dd. (EEE)', { locale: ko })}</td>
                       <td className="text-[11px] print:text-[11px] whitespace-nowrap">{row.periods ? `${row.count}시간(${row.periods})` : `${row.count}시간`}</td>
@@ -300,7 +302,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                     </tr>
                   ))}
                   {emptyRows.map((_, idx) => (
-                    <tr key={`empty-${idx}`} className="h-10 print:h-8">
+                    <tr key={`empty-${idx}`} className="h-10 print:h-7">
                       <td>{rowData.length + idx + 1}</td>
                       <td></td>
                       <td></td>
@@ -308,7 +310,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                       <td></td>
                     </tr>
                   ))}
-                  <tr className="h-10 print:h-8 bg-gray-50/50 font-bold">
+                  <tr className="h-10 print:h-7 bg-gray-50/50 font-bold">
                     <td colSpan={2}>계</td>
                     <td className="text-[11px] print:text-[11px]">{rowData.reduce((acc, row) => acc + row.count, 0)}시간</td>
                     <td colSpan={2}></td>
@@ -316,11 +318,11 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                 </tbody>
               </table>
 
-              <div className="mt-12 print:mt-8 flex flex-col items-center gap-12 print:gap-8">
+              <div className="mt-12 print:mt-5 flex flex-col items-center gap-12 print:gap-4">
                 <p className="text-lg print:text-base font-bold">위와 같이 근무하였음을 확인합니다.</p>
                 
                 <div className="w-full flex justify-end pr-8">
-                  <div className="flex flex-col gap-8 print:gap-4 w-64">
+                  <div className="flex flex-col gap-8 print:gap-2.5 w-64">
                     <div className="flex items-center justify-between border-b border-black pb-1">
                       <span className="font-bold">확인 일자:</span>
                       <span className="text-gray-400">2026년 &nbsp;&nbsp;&nbsp;&nbsp;월 &nbsp;&nbsp;&nbsp;&nbsp;일</span>
@@ -332,7 +334,7 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
                   </div>
                 </div>
 
-                <div className="mt-12 print:mt-8 text-2xl print:text-xl font-black tracking-widest uppercase">
+                <div className="mt-12 print:mt-1 text-2xl print:text-xl font-black tracking-widest uppercase">
                    인천비즈니스고등학교
                 </div>
               </div>
