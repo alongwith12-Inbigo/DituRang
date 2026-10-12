@@ -1,5 +1,13 @@
-import { format, addDays } from 'date-fns';
+import { format, addDays, parseISO, startOfWeek } from 'date-fns';
 import { Tutor, Reservation, ALL_PERIODS, LUNCH_PERIOD } from '../types';
+
+export function parseDateSafe(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return parseISO(dateStr);
+  }
+  return new Date(dateStr);
+}
 
 export const PERIOD_START_TIMES: Record<number, string> = {
   1: "08:50",
@@ -32,11 +40,11 @@ export function isPeriodInPast(dateStr: string, period: number, now: Date = new 
  * Checks if the tutor is scheduled to work on this day and period.
  */
 export function isTutorScheduled(tutor: Tutor, dateStr: string, period: number): boolean {
-  const dayDate = new Date(dateStr);
+  const dayDate = parseDateSafe(dateStr);
   const dayIdx = (dayDate.getDay() + 6) % 7; // Monday = 0
   if (dayIdx < 0 || dayIdx > 4) return false;
 
-  const mon = format(addDays(dayDate, -dayIdx), 'yyyy-MM-dd');
+  const mon = format(startOfWeek(dayDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const periods = tutor.weekOverrides?.[mon]?.[dayIdx] ?? tutor.workSchedule?.[dayIdx] ?? [];
   return periods.includes(period);
 }

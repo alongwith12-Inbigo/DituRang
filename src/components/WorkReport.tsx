@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, Printer, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getMonth, getYear, parseISO, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getMonth, getYear, parseISO, addMonths, subMonths, startOfWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Tutor, Reservation, PERIOD_TIMES, ALL_PERIODS, comparePeriods } from '../types';
 import { cn } from '../lib/utils';
@@ -107,16 +107,15 @@ export default function WorkReport({ tutor, reservations, confirmerName, onClose
 
   // Helper to check if slot is active
   const getWeekStart = (dateStr: string) => {
-    const d = new Date(dateStr);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
-    const monday = new Date(d.setDate(diff));
+    const d = parseISO(dateStr);
+    const monday = startOfWeek(d, { weekStartsOn: 1 });
     return format(monday, 'yyyy-MM-dd');
   };
 
   const isSlotActive = (dateStr: string, period: number) => {
-    const dayDate = new Date(dateStr);
+    const dayDate = parseISO(dateStr);
     const dayIdx = (dayDate.getDay() + 6) % 7; // Monday = 0
+    if (dayIdx >= 5) return false;
     const mon = getWeekStart(dateStr);
     return tutor.weekOverrides?.[mon]?.[dayIdx]?.includes(period) ?? tutor.workSchedule?.[dayIdx]?.includes(period) ?? false;
   };

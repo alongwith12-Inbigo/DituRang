@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Star, Plus, Trash2 } from 'lucide-react';
 import { deleteDoc, doc } from 'firebase/firestore';
-import { format, addDays } from 'date-fns';
+import { format, addDays, parseISO, startOfWeek } from 'date-fns';
 import { db } from '../lib/firebase';
 import { 
   Tutor, 
@@ -40,8 +40,8 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
   };
 
   const getWeekStart = (date: string) => {
-    const d = new Date(date);
-    return format(addDays(d, -((d.getDay() + 6) % 7)), 'yyyy-MM-dd');
+    const d = parseISO(date);
+    return format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd');
   };
 
   const confirmDelete = async () => {
@@ -114,7 +114,7 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
                 </td>
                 {weekRange.map((day, dIdx) => {
                   const reservation = getReservation(day.date, period);
-                  const mon = getWeekStart(day.date);
+                  const mon = weekRange[0]?.date || getWeekStart(day.date);
                   const active = tutor.weekOverrides?.[mon]?.[dIdx]?.includes(period) ?? tutor.workSchedule?.[dIdx]?.includes(period);
                   const closed = isMonthClosed(day.date);
                   
@@ -178,16 +178,25 @@ export default function Timetable({ tutor, reservations, schoolEvents, weekRange
                           )}
                         </motion.div>
                       ) : (active && !closed) ? (
-                        <div className="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity print:hidden">
+                        <div className="w-full h-full flex items-center justify-center relative print:hidden">
+                           {isLunch && (
+                             <span className={cn(
+                               "text-[10px] lg:text-[12px] font-black transition-opacity select-none group-hover:opacity-0",
+                               tutor.id === 'tutor1' ? "text-[#E91E63]/70" : "text-[#0288D1]/70"
+                             )}>
+                               점심
+                             </span>
+                           )}
                            <div className={cn(
-                             "w-6 h-6 rounded-full flex items-center justify-center shadow-xs",
+                             "w-6 h-6 rounded-full flex items-center justify-center shadow-xs transition-all",
+                             isLunch ? "opacity-0 group-hover:opacity-100 absolute" : "opacity-0 group-hover:opacity-100",
                              tutor.id === 'tutor1' ? "bg-[#FFF9C4] text-amber-500" : "bg-[#B3E5FC] text-sky-500"
                            )}>
                               <Plus size={14} />
                            </div>
                         </div>
                       ) : isLunch ? (
-                        <div className="w-full h-full flex items-center justify-center select-none text-[9px] lg:text-[11px] font-bold text-amber-900/30">
+                        <div className="w-full h-full flex items-center justify-center select-none text-[9px] lg:text-[11px] font-bold text-amber-900/35">
                           점심시간
                         </div>
                       ) : null}

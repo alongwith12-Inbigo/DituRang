@@ -5,12 +5,13 @@ import { addDoc, collection, serverTimestamp, doc, setDoc, query, where, getDocs
 import { addWeeks, format, addDays, isBefore, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { db } from '../lib/firebase';
-import { Tutor, Reservation, DAYS, ALL_PERIODS, LUNCH_PERIOD, getPeriodLabel, comparePeriods } from '../types';
+import { Tutor, Reservation, DAYS, ALL_PERIODS, LUNCH_PERIOD, getPeriodLabel, comparePeriods, formatPeriodsSummary } from '../types';
 import { cn } from '../lib/utils';
 import { 
   isTutorScheduled, 
   isSlotBooked, 
-  PERIOD_START_TIMES
+  PERIOD_START_TIMES,
+  parseDateSafe
 } from '../lib/slotUtils';
 
 export const TUTOR_REQUEST_TOPICS = [
@@ -210,7 +211,7 @@ export default function ReservationModal({
 
       // 1. Identify all target slots
       for (let w = 0; w < numWeeks; w++) {
-        const currentDate = format(addWeeks(new Date(selectedDate), w), 'yyyy-MM-dd');
+        const currentDate = format(addWeeks(parseDateSafe(selectedDate), w), 'yyyy-MM-dd');
         for (const p of selectedPeriods) {
           if (!isTutorScheduled(tutor, currentDate, p)) continue;
           const pLabel = getPeriodLabel(p);
@@ -293,8 +294,10 @@ export default function ReservationModal({
       if (selectedPeriods.length > 1) setSelectedPeriods(prev => prev.filter(x => x !== p));
     } else {
       const pLabel = getPeriodLabel(p);
+      const dayDate = parseDateSafe(selectedDate);
+      const dayIdx = (dayDate.getDay() + 6) % 7;
       if (!isTutorScheduled(tutor, selectedDate, p)) {
-        alert(`${DAYS[(new Date(selectedDate).getDay() + 6) % 7]}요일 ${pLabel}는 튜터님의 근무 일정이 아닙니다.`);
+        alert(`${DAYS[dayIdx]}요일 ${pLabel}는 튜터님의 근무 일정이 아닙니다.`);
         return;
       }
       if (isSlotBooked(reservations, tutor.id, selectedDate, p, editReservation?.id)) {
@@ -326,10 +329,10 @@ export default function ReservationModal({
             <p className="text-[11px] font-bold text-[#7E57C2] mt-0.5 flex items-center gap-1">
               <span>{tutor.name} 선생님</span>
               <span className="text-[#D1C4E9]">|</span>
-              <span>{format(new Date(selectedDate), 'yyyy.MM.dd(EEE)', { locale: ko })}</span>
+              <span>{format(parseDateSafe(selectedDate), 'yyyy.MM.dd(EEE)', { locale: ko })}</span>
               {selectedPeriods.length > 0 && (
                 <span className="bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded text-[10px]">
-                  {selectedPeriods.map(p => getPeriodLabel(p)).join(', ')}
+                  {formatPeriodsSummary(selectedPeriods)}
                 </span>
               )}
             </p>
@@ -362,7 +365,7 @@ export default function ReservationModal({
                 예약 날짜 선택
               </label>
               <span className="text-xs font-bold text-[#5E35B1] bg-white px-2.5 py-0.5 rounded-md border border-purple-200 shadow-xs">
-                {format(new Date(selectedDate), 'yyyy년 MM월 dd일 (EEE)', { locale: ko })}
+                {format(parseDateSafe(selectedDate), 'yyyy년 MM월 dd일 (EEE)', { locale: ko })}
               </span>
             </div>
 
